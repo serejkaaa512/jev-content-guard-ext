@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { width: 280px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 12px; margin: 0; background: #fafafa; }
+    h3 { margin-top: 0; color: #111; font-size: 16px; border-bottom: 1px solid #eee; padding-bottom: 8px; }
+    label { font-size: 12px; color: #555; font-weight: 500; }
+    input { width: 100%; padding: 8px; margin: 8px 0; box-sizing: border-box; border: 1px solid #ccc; border-radius: 6px; font-size: 13px; }
+    button { width: 100%; padding: 10px; background: #007aff; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13px; transition: background 0.2s; }
+    button:hover { background: #0056b3; }
+    .status { font-size: 12px; margin-top: 8px; color: #28a745; display: none; text-align: center; font-weight: 500; }
+    .thresholds { display: grid; grid-template-columns: 1fr auto; gap: 4px 8px; align-items: center; margin: 8px 0; }
+    .thresholds label { margin: 0; }
+    .thresholds input { width: 64px; margin: 0; text-align: center; }
+  </style>
+</head>
+<body>
+  <h3>Jev Guard Settings</h3>
+  <label for="apiKey">Токен TypeSafe Jev API Key:</label>
+  <input type="password" id="apiKey" placeholder="jev_live_...">
+  <label>Пороги срабатывания (%):</label>
+  <div class="thresholds">
+    <label for="th_is_fraud">⚠️ Мошенничество</label>
+    <input type="number" id="th_is_fraud" min="1" max="100" value="50">
+    <label for="th_is_advertising">📢 Реклама</label>
+    <input type="number" id="th_is_advertising" min="1" max="100" value="20">
+    <label for="th_is_ai_generated">🤖 AI-генерация</label>
+    <input type="number" id="th_is_ai_generated" min="1" max="100" value="25">
+    <label for="th_is_spam">🚫 Спам</label>
+    <input type="number" id="th_is_spam" min="1" max="100" value="25">
+    <label for="th_is_clickbait">🪤 Кликбейт</label>
+    <input type="number" id="th_is_clickbait" min="1" max="100" value="20">
+    <label for="th_is_infobusiness">💎 Инфоцыганство</label>
+    <input type="number" id="th_is_infobusiness" min="1" max="100" value="25">
+    <label for="th_is_toxic">🤬 Токсичность</label>
+    <input type="number" id="th_is_toxic" min="1" max="100" value="25">
+  </div>
+  <button id="saveBtn">Сохранить настройки</button>
+  <div id="status" class="status">Ключ успешно сохранен!</div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
