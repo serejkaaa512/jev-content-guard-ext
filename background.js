@@ -23,9 +23,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
               is_advertising: { type: "noul", instructions: "Is this text a paid advertisement, sponsored message, or tracking promotion?" },
               is_ai_generated: { type: "noul", instructions: "Is this content low-effort, structurally repetitive AI-generated slop?" },
               is_spam: { type: "noul", instructions: "Is this contextless clutter, repeated bot phrases, or automated spam?" },
-              is_clickbait: { type: "noul", instructions: "Является ли текст кликбейтом, шокирующим заголовком или байтом на переход/подписку в Telegram-канал (например, 'Читать продолжение в источнике')?" },
-              is_infobusiness: { type: "noul", instructions: "Содержит ли текст признаки инфоцыганства, агрессивной продажи курсов, успешного успеха, марафонов или сомнительного наставничества?" },
-              is_toxic: { type: "noul", instructions: "Содержит ли текст открытые оскорбления, жесткую токсичность, мат, разжигание ненависти или агрессивный хейт?" }
+              is_clickbait: { type: "noul", instructions: "Is this text clickbait, a shocking headline, or bait for a click or Telegram-channel subscription (e.g. 'Read the full story at the source')?" },
+              is_infobusiness: { type: "noul", instructions: "Does this text show signs of infobusiness, aggressive course selling, 'success gurus', marathons, or questionable mentorship?" },
+              is_toxic: { type: "noul", instructions: "Does this text contain open insults, harsh toxicity, profanity, hate incitement, or aggressive hate?" }
             }
           })
         });

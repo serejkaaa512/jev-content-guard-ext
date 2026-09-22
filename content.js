@@ -13,23 +13,42 @@ const DEFAULT_THRESHOLDS = {
   is_toxic: 0.25
 };
 
-let thresholds = { ...DEFAULT_THRESHOLDS };
+const DEFAULT_UPPER_THRESHOLDS = {
+  is_fraud: 0.80,
+  is_advertising: 0.80,
+  is_ai_generated: 0.80,
+  is_spam: 0.80,
+  is_clickbait: 0.80,
+  is_infobusiness: 0.80,
+  is_toxic: 0.80
+};
+
+let thresholds = { ...DEFAULT_THRESHOLDS, upper_limits: { ...DEFAULT_UPPER_THRESHOLDS } };
+let upperLimits = { ...DEFAULT_UPPER_THRESHOLDS };
 
 loadThresholds();
 
 function loadThresholds() {
   chrome.storage.local.get(['jevThresholds'], (result) => {
     if (result.jevThresholds) {
-      thresholds = { ...DEFAULT_THRESHOLDS, ...result.jevThresholds };
+      applyThresholds({ ...DEFAULT_THRESHOLDS, ...result.jevThresholds });
     }
   });
 }
 
 chrome.storage.onChanged.addListener((changes, areaName) => {
   if (areaName === "local" && changes.jevThresholds) {
-    thresholds = { ...DEFAULT_THRESHOLDS, ...(changes.jevThresholds.newValue || {}) };
+    applyThresholds({ ...DEFAULT_THRESHOLDS, ...(changes.jevThresholds.newValue || {}) });
   }
 });
+
+function applyThresholds(merged) {
+  thresholds = { ...DEFAULT_THRESHOLDS, ...merged };
+  upperLimits = {
+    ...DEFAULT_UPPER_THRESHOLDS,
+    ...(merged.upper_limits && typeof merged.upper_limits === 'object' ? merged.upper_limits : {})
+  };
+}
 
 const processedElements = new WeakSet();
 let analysisQueue = [];
@@ -123,7 +142,7 @@ function analyzeItem(item) {
       { action: "analyzeContent", text: item.text },
       (response) => {
         if (chrome.runtime.lastError) {
-          console.warn("[Jev Guard] Ошибка связи:", chrome.runtime.lastError.message);
+          console.warn("[Jev Guard] Communication error:", chrome.runtime.lastError.message);
           resolve(false);
           return;
         }
@@ -135,7 +154,7 @@ function analyzeItem(item) {
           console.error("[Jev Guard] API Error:", response.error);
           resolve(false);
         } else {
-          console.warn("[Jev Guard] Пустой или некорректный ответ API для элемента.");
+          console.warn("[Jev Guard] Empty or invalid API response for element.");
           resolve(false);
         }
       }
@@ -152,32 +171,59 @@ function getProbability(flag) {
 }
 
 function processJevResults(domElement, flags) {
-  if (getProbability(flags.is_fraud) >= thresholds.is_fraud) {
-    flagElement(domElement, "⚠️ Подозрение на мошенничество / Скам", "jev-theme-fraud");
-  } else if (getProbability(flags.is_advertising) >= thresholds.is_advertising) {
-    flagElement(domElement, "📢 Рекламный контент", "jev-theme-ad");
-  } else if (getProbability(flags.is_ai_generated) >= thresholds.is_ai_generated) {
-    flagElement(domElement, "🤖 Подозрение на AI-генерацию (Слоп)", "jev-theme-ai");
-  } else if (getProbability(flags.is_spam) >= thresholds.is_spam) {
-    flagElement(domElement, "🚫 Скрытый спам", "jev-theme-spam");
-  } else if (getProbability(flags.is_clickbait) >= thresholds.is_clickbait) {
-    flagElement(domElement, "🪤 Кликбейт / Байт на подписку", "jev-theme-clickbait");
-  } else if (getProbability(flags.is_infobusiness) >= thresholds.is_infobusiness) {
-    flagElement(domElement, "💎 Инфоцыганство / «Успешный успех»", "jev-theme-infobiz");
-  } else if (getProbability(flags.is_toxic) >= thresholds.is_toxic) {
-    flagElement(domElement, "🤬 Токсичный контент / Хейт", "jev-theme-toxic");
+  // Checks flags in priority order and returns the first one whose probability
+  // is at or above its lower threshold.
+  const MATCHERS = [
+    { flag: 'is_fraud', text: '⚠️ scam', theme: 'jev-theme-fraud' },
+    { flag: 'is_advertising', text: '📢 adv', theme: 'jev-theme-ad' },
+    { flag: 'is_ai_generated', text: '🤖 AI', theme: 'jev-theme-ai' },
+    { flag: 'is_spam', text: '🚫 spam', theme: 'jev-theme-spam' },
+    { flag: 'is_clickbait', text: '🪤 bait', theme: 'jev-theme-clickbait' },
+    { flag: 'is_infobusiness', text: '🤡 guru', theme: 'jev-theme-infobiz' },
+    { flag: 'is_toxic', text: '🤬 toxic', theme: 'jev-theme-toxic' }
+  ];
+
+  const matched = MATCHERS.find(({ flag }) => getProbability(flags[flag]) >= thresholds[flag]);
+  if (!matched) return;
+
+  const probability = getProbability(flags[matched.flag]);
+  const percent = Math.round(probability * 100);
+  const reasonText = `${matched.text} · ${percent}%`;
+
+  if (probability > (upperLimits[matched.flag] ?? DEFAULT_UPPER_THRESHOLDS[matched.flag])) {
+    flagElement(domElement, reasonText, matched.theme, 'full');
+  } else {
+    flagElement(domElement, reasonText, matched.theme, 'soft');
   }
 }
 
-function flagElement(element, reasonText, themeClass) {
+function flagElement(element, reasonText, themeClass, mode) {
   if (element.dataset.jevFlagged === "true") return;
   element.dataset.jevFlagged = "true";
 
   element.style.position = 'relative';
-  
+
+  const badge = document.createElement('button');
+  badge.className = `jev-warning-badge ${themeClass}`;
+  badge.innerHTML = mode === 'soft'
+    ? reasonText
+    : `${reasonText} <span style="margin-left:8px; font-size:10px; opacity:0.8;">[Expand]</span>`;
+
+  if (mode === 'soft') {
+    // Soft mode: compact non-blurring badge pinned to the top right corner.
+    badge.classList.add('jev-soft-badge');
+    badge.addEventListener('click', (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      badge.remove();
+    });
+    element.appendChild(badge);
+    return;
+  }
+
   const overlay = document.createElement('div');
   overlay.className = 'jev-blur-overlay';
-  
+
   overlay.setAttribute('style', `
     position: absolute !important;
     inset: 0 !important;
@@ -196,10 +242,6 @@ function flagElement(element, reasonText, themeClass) {
     overlay.style.setProperty('background', 'rgba(24, 24, 26, 0.85)', 'important');
   }
 
-  const badge = document.createElement('button');
-  badge.className = `jev-warning-badge ${themeClass}`;
-  badge.innerHTML = `${reasonText} <span style="margin-left:8px; font-size:10px; opacity:0.8;">[Развернуть]</span>`;
-  
   overlay.appendChild(badge);
 
   badge.addEventListener('click', (e) => {

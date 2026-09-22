@@ -10,34 +10,42 @@
     button { width: 100%; padding: 10px; background: #007aff; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13px; transition: background 0.2s; }
     button:hover { background: #0056b3; }
     .status { font-size: 12px; margin-top: 8px; color: #28a745; display: none; text-align: center; font-weight: 500; }
-    .thresholds { display: grid; grid-template-columns: 1fr auto; gap: 4px 8px; align-items: center; margin: 8px 0; }
+    .thresholds { display: grid; grid-template-columns: 1fr auto auto; gap: 4px 8px; align-items: center; margin: 8px 0; }
     .thresholds label { margin: 0; }
-    .thresholds input { width: 64px; margin: 0; text-align: center; }
+    .thresholds input { width: 56px; margin: 0; text-align: center; }
+    .thresholds .upper { background: #f0f4ff; border-color: #9db4e8; }
   </style>
 </head>
 <body>
   <h3>Jev Guard Settings</h3>
-  <label for="apiKey">Токен TypeSafe Jev API Key:</label>
+  <label for="apiKey">TypeSafe Jev API Token:</label>
   <input type="password" id="apiKey" placeholder="jev_live_...">
-  <label>Пороги срабатывания (%):</label>
+  <label>Trigger thresholds (%) · lower / upper:</label>
   <div class="thresholds">
-    <label for="th_is_fraud">⚠️ Мошенничество</label>
+    <label for="th_is_fraud">⚠️ Fraud</label>
     <input type="number" id="th_is_fraud" min="1" max="100" value="50">
-    <label for="th_is_advertising">📢 Реклама</label>
+    <input type="number" id="thu_is_fraud" class="upper" min="1" max="100" value="80">
+    <label for="th_is_advertising">📢 Advertising</label>
     <input type="number" id="th_is_advertising" min="1" max="100" value="20">
-    <label for="th_is_ai_generated">🤖 AI-генерация</label>
+    <input type="number" id="thu_is_advertising" class="upper" min="1" max="100" value="80">
+    <label for="th_is_ai_generated">🤖 AI generation</label>
     <input type="number" id="th_is_ai_generated" min="1" max="100" value="25">
-    <label for="th_is_spam">🚫 Спам</label>
+    <input type="number" id="thu_is_ai_generated" class="upper" min="1" max="100" value="80">
+    <label for="th_is_spam">🚫 Spam</label>
     <input type="number" id="th_is_spam" min="1" max="100" value="25">
-    <label for="th_is_clickbait">🪤 Кликбейт</label>
+    <input type="number" id="thu_is_spam" class="upper" min="1" max="100" value="80">
+    <label for="th_is_clickbait">🪤 Clickbait</label>
     <input type="number" id="th_is_clickbait" min="1" max="100" value="20">
-    <label for="th_is_infobusiness">💎 Инфоцыганство</label>
+    <input type="number" id="thu_is_clickbait" class="upper" min="1" max="100" value="80">
+    <label for="th_is_infobusiness">💎 Infobusiness</label>
     <input type="number" id="th_is_infobusiness" min="1" max="100" value="25">
-    <label for="th_is_toxic">🤬 Токсичность</label>
+    <input type="number" id="thu_is_infobusiness" class="upper" min="1" max="100" value="80">
+    <label for="th_is_toxic">🤬 Toxicity</label>
     <input type="number" id="th_is_toxic" min="1" max="100" value="25">
+    <input type="number" id="thu_is_toxic" class="upper" min="1" max="100" value="80">
   </div>
-  <button id="saveBtn">Сохранить настройки</button>
-  <div id="status" class="status">Ключ успешно сохранен!</div>
+  <button id="saveBtn">Save settings</button>
+  <div id="status" class="status">Settings saved successfully!</div>
 
   <script src="popup.js"></script>
 </body>

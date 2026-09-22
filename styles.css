@@ -26,7 +26,23 @@
   transform: scale(0.97);
 }
 
-/* Цветовые темы с повышенной приоритетностью */
+.jev-soft-badge {
+  position: absolute !important;
+  bottom: 6px !important;
+  right: 6px !important;
+  z-index: 10000 !important;
+  padding: 4px 10px !important;
+  border-radius: 14px !important;
+  font-size: 11px !important;
+  border-width: 1px !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
+  margin: 0 !important;
+  max-width: 320px !important;
+  white-space: normal !important;
+  text-align: left !important;
+}
+
+/* Color themes with elevated specificity */
 .jev-theme-fraud { border-color: #ff3b30 !important; box-shadow: 0 4px 14px rgba(255, 59, 48, 0.3) !important; }
 .jev-theme-ad { border-color: #ff9500 !important; box-shadow: 0 4px 14px rgba(255, 149, 0, 0.25) !important; }
 .jev-theme-ai { border-color: #5856d6 !important; box-shadow: 0 4px 14px rgba(88, 86, 214, 0.25) !important; }
