@@ -10,7 +10,8 @@ document.addEventListener('DOMContentLoaded', () => {
     is_spam: 25,
     is_clickbait: 20,
     is_infobusiness: 25,
-    is_toxic: 25
+    is_toxic: 25,
+    is_plagiat: 25
   };
 
   chrome.storage.local.get(['jevApiKey', 'jevThresholds'], (result) => {

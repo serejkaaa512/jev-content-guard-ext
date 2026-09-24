@@ -25,7 +25,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
               is_spam: { type: "noul", instructions: "Is this contextless clutter, repeated bot phrases, or automated spam?" },
               is_clickbait: { type: "noul", instructions: "Is this text clickbait, a shocking headline, or bait for a click or Telegram-channel subscription (e.g. 'Read the full story at the source')?" },
               is_infobusiness: { type: "noul", instructions: "Does this text show signs of infobusiness, aggressive course selling, 'success gurus', marathons, or questionable mentorship?" },
-              is_toxic: { type: "noul", instructions: "Does this text contain open insults, harsh toxicity, profanity, hate incitement, or aggressive hate?" }
+              is_toxic: { type: "noul", instructions: "Does this text contain open insults, harsh toxicity, profanity, hate incitement, or aggressive hate?" },
+              is_plagiat: { type: "noul", instructions: "Is this text plagiarized, near-duplicated from another source, or lifted content without attribution?" }
             }
           })
         });

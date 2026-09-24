@@ -27,10 +27,6 @@
 }
 
 .jev-soft-badge {
-  position: absolute !important;
-  bottom: 6px !important;
-  right: 6px !important;
-  z-index: 10000 !important;
   padding: 4px 10px !important;
   border-radius: 14px !important;
   font-size: 11px !important;
@@ -42,6 +38,24 @@
   text-align: left !important;
 }
 
+/* Column stack so several soft badges never overlap in the same corner. */
+.jev-soft-badge-stack {
+  position: absolute !important;
+  bottom: 6px !important;
+  right: 6px !important;
+  z-index: 10000 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-end !important;
+  gap: 6px !important;
+  max-width: 320px !important;
+  pointer-events: none !important;
+}
+
+.jev-soft-badge-stack .jev-warning-badge {
+  pointer-events: auto !important;
+}
+
 /* Color themes with elevated specificity */
 .jev-theme-fraud { border-color: #ff3b30 !important; box-shadow: 0 4px 14px rgba(255, 59, 48, 0.3) !important; }
 .jev-theme-ad { border-color: #ff9500 !important; box-shadow: 0 4px 14px rgba(255, 149, 0, 0.25) !important; }
@@ -50,3 +64,4 @@
 .jev-theme-clickbait { border-color: #007aff !important; box-shadow: 0 4px 14px rgba(0, 122, 255, 0.25) !important; }
 .jev-theme-infobiz { border-color: #af52de !important; box-shadow: 0 4px 14px rgba(175, 82, 222, 0.3) !important; }
 .jev-theme-toxic { border-color: #cc0000 !important; box-shadow: 0 4px 14px rgba(204, 0, 0, 0.35) !important; }
+.jev-theme-plagiat { border-color: #e8e8f0 !important; box-shadow: 0 4px 14px rgba(232, 232, 240, 0.3) !important; }

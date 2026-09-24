@@ -5,7 +5,7 @@ A **Manifest V3** browser extension that filters out fraud, advertising, AI slop
 ## ✨ Features
 
 - **Automatic content scanning** — the extension analyzes page text in the background as you browse (including dynamically added content via `MutationObserver`).
-- **7 detection categories**, each reported by the Jev AI model with a probability score:
+- **8 detection categories**, each reported by the Jev AI model with a probability score:
   | Flag | Badge | Category |
   |---|---|---|
   | `is_fraud` | ⚠️ scam | Phishing, scams, fraudulent financial setups |
@@ -14,7 +14,8 @@ A **Manifest V3** browser extension that filters out fraud, advertising, AI slop
   | `is_spam` | 🚫 spam | Contextless clutter, bot phrases, automated spam |
   | `is_clickbait` | 🪤 bait | Shocking headlines, "read the full story" bait |
   | `is_infobusiness` | 🤡 guru | Course selling, "success gurus", marathons, mentorship |
-  | `is_toxic` | 🤬 toxic | Insults, profanity, hate incitement |
+  | `is_toxic` | 🤬 toxic | Incitement, profanity, hate incitement |
+  | `is_plagiat` | 📕 plag | Plagiarized, near-duplicated from another source |
 - **Two-tier configurable thresholds**:
   - **Lower threshold** — probability at/above this value flags the element.
   - **Upper limit** — probability above this value triggers *hard mode* (content is blurred with an overlay); otherwise *soft mode* shows a small dismissible badge in the corner.
