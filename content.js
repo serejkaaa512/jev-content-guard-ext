@@ -343,6 +343,12 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'analyzeSelection') {
     analyzeSelection();
     sendResponse({ ok: true });
+  } else if (request.action === 'extractKeywords') {
+    extractKeywordsFromSelection();
+    sendResponse({ ok: true });
+  } else if (request.action === 'extractKeywordsPage') {
+    extractKeywordsFromPage();
+    sendResponse({ ok: true });
   }
 });
 
@@ -398,3 +404,265 @@ function renderSelectionBadges(flags, rect) {
 
   document.body.appendChild(container);
 }
+
+const STOP_WORDS = new Set([
+  // English common stop words
+  'a', 'about', 'above', 'after', 'again', 'against', 'all', 'am', 'an', 'and', 'any', 'are', 'aren\'t', 'as', 'at',
+  'be', 'because', 'been', 'before', 'being', 'below', 'between', 'both', 'but', 'by',
+  'can\'t', 'cannot', 'could', 'couldn\'t', 'did', 'didn\'t', 'do', 'does', 'doesn\'t', 'doing', 'don\'t', 'down', 'during',
+  'each', 'few', 'for', 'from', 'further', 'had', 'hadn\'t', 'has', 'hasn\'t', 'have', 'haven\'t', 'having', 'he', 'he\'d',
+  'he\'ll', 'he\'s', 'her', 'here', 'here\'s', 'hers', 'herself', 'him', 'himself', 'his', 'how', 'how\'s',
+  'i', 'i\'d', 'i\'ll', 'i\'m', 'i\'ve', 'if', 'in', 'into', 'is', 'isn\'t', 'it', 'it\'s', 'its', 'itself',
+  'let\'s', 'me', 'more', 'most', 'mustn\'t', 'my', 'myself', 'no', 'nor', 'not', 'of', 'off', 'on', 'once', 'only', 'or',
+  'other', 'ought', 'our', 'ours', 'ourselves', 'out', 'over', 'own', 'same', 'shan\'t', 'she', 'she\'d', 'she\'ll', 'she\'s',
+  'should', 'shouldn\'t', 'so', 'some', 'such', 'than', 'that', 'that\'s', 'the', 'their', 'theirs', 'them', 'themselves',
+  'then', 'there', 'there\'s', 'these', 'they', 'they\'d', 'they\'ll', 'they\'re', 'they\'ve', 'this', 'those', 'through',
+  'to', 'too', 'under', 'until', 'up', 'very', 'was', 'wasn\'t', 'we', 'we\'d', 'we\'ll', 'we\'re', 'we\'ve', 'were',
+  'weren\'t', 'what', 'what\'s', 'when', 'when\'s', 'where', 'where\'s', 'which', 'while', 'who', 'who\'s', 'whom',
+  'why', 'why\'s', 'with', 'won\'t', 'would', 'wouldn\'t', 'you', 'you\'d', 'you\'ll', 'you\'re', 'you\'ve', 'your',
+  'yours', 'yourself', 'yourselves',
+  // Russian common stop words
+  'и', 'в', 'во', 'не', 'что', 'он', 'на', 'я', 'с', 'со', 'как', 'а', 'то', 'все', 'она', 'так', 'его', 'но', 'да', 'ты',
+  'к', 'у', 'же', 'вы', 'за', 'бы', 'по', 'только', 'ее', 'мне', 'было', 'вот', 'от', 'меня', 'еще', 'нет', 'о', 'из', 'ему',
+  'теперь', 'когда', 'даже', 'ну', 'вдруг', 'ли', 'если', 'уже', 'или', 'ни', 'быть', 'был', 'него', 'до', 'вас', 'нибудь',
+  'опять', 'уж', 'вам', 'ведь', 'там', 'потом', 'себя', 'ничего', 'ей', 'может', 'они', 'тут', 'где', 'есть', 'надо', 'ней',
+  'для', 'мы', 'тебя', 'их', 'чем', 'была', 'сам', 'чтоб', 'без', 'будто', 'чего', 'раз', 'тоже', 'себе', 'под', 'будет',
+  'ж', 'тогда', 'кто', 'этот', 'того', 'потому', 'этого', 'какой', 'совсем', 'ним', 'здесь', 'этом', 'один', 'почти', 'мой',
+  'тем', 'чтобы', 'нее', 'сейчас', 'были', 'куда', 'зачем', 'всех', 'никогда', 'можно', 'при', 'наконец', 'два', 'об', 'другой',
+  'хоть', 'после', 'над', 'больше', 'тот', 'через', 'эти', 'нас', 'про', 'всего', 'них', 'какая', 'много', 'разве', 'три',
+  'эту', 'моя', 'впрочем', 'хорошо', 'свою', 'этой', 'перед', 'иногда', 'лучше', 'чуть', 'том', 'нельзя', 'такой', 'им',
+  'более', 'всегда', 'точной', 'между', 'это'
+]);
+
+function extractCandidateWords(text, maxCandidates = 35) {
+  const matches = text.match(/[\p{L}\p{M}]+(?:-[\p{L}\p{M}]+)*/gu);
+  if (!matches) return [];
+
+  const candidatesInOrder = [];
+  const seen = new Set();
+  const freq = new Map();
+  // Map lowercased form to first seen original case in text
+  const originalCaseMap = new Map();
+
+  for (const token of matches) {
+    const lower = token.toLowerCase();
+    if (lower.length < 3) continue;
+    if (STOP_WORDS.has(lower)) continue;
+
+    const count = freq.get(lower) || 0;
+    freq.set(lower, count + 1);
+
+    if (!seen.has(lower)) {
+      seen.add(lower);
+      originalCaseMap.set(lower, token);
+      candidatesInOrder.push(lower);
+    }
+  }
+
+  // If there are too many unique words, keep those with higher frequency,
+  // but preserve their original order of appearance in the text.
+  let selected = candidatesInOrder;
+  if (candidatesInOrder.length > maxCandidates) {
+    const allowed = new Set(
+      Array.from(freq.entries())
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, maxCandidates)
+        .map(entry => entry[0])
+    );
+    selected = candidatesInOrder.filter(word => allowed.has(word));
+  }
+
+  // Return the words in their original case as found in the text
+  return selected.map(lower => originalCaseMap.get(lower) || lower);
+}
+
+function extractKeywordsFromSelection() {
+  const selection = window.getSelection();
+  if (!selection || selection.rangeCount === 0 || selection.isCollapsed) return;
+
+  const rawText = selection.toString().replace(/\s+/g, ' ').trim();
+  if (!rawText) return;
+
+  const rect = selection.getRangeAt(0).getBoundingClientRect();
+  const candidates = extractCandidateWords(rawText, 35);
+
+  if (candidates.length === 0) {
+    showKeywordToast("No key words found in selection.", rect);
+    return;
+  }
+
+  const loadingIndicator = showKeywordLoading(rect);
+
+  chrome.runtime.sendMessage(
+    {
+      action: 'extractKeywords',
+      text: rawText.slice(0, MAX_CHAR_LENGTH),
+      words: candidates
+    },
+    (response) => {
+      loadingIndicator?.remove();
+      if (chrome.runtime.lastError) {
+        console.warn('[Jev Guard] Keywords communication error:', chrome.runtime.lastError.message);
+        showKeywordToast("Communication error.", rect);
+        return;
+      }
+
+      if (response && response.success && Array.isArray(response.results)) {
+        renderKeywordResults(response.results, rect);
+      } else if (response && response.error) {
+        console.error('[Jev Guard] Keywords API error:', response.error);
+        showKeywordToast(`Error: ${response.error}`, rect);
+      }
+    }
+  );
+}
+
+function extractKeywordsFromPage() {
+  const TARGET_SELECTOR = 'p, article, section, li, [role="article"], .tm-articles-list__item, .tm-article-presenter, .article-snippet, .tm-comment-thread__comment, .tm-comment';
+  const targets = document.body.querySelectorAll(TARGET_SELECTOR);
+  const textChunks = [];
+
+  targets.forEach(el => {
+    const isNoise = el.closest('nav, footer, header, script, style, noscript, form, .tm-page-sidebar, .tm-navbar');
+    if (isNoise) return;
+    if (el.querySelector(TARGET_SELECTOR)) return;
+
+    const t = el.innerText?.replace(/\s+/g, ' ').trim() || '';
+    if (t.length >= 30) {
+      textChunks.push(t);
+    }
+  });
+
+  const fullText = textChunks.join(' ').slice(0, MAX_CHAR_LENGTH);
+  if (!fullText) {
+    showKeywordToast("No readable text found on page.", { top: 80, bottom: 80, left: 40 });
+    return;
+  }
+
+  // Floating placement near the top right of the viewport
+  const viewportRect = {
+    top: window.scrollY + 80,
+    bottom: window.scrollY + 80,
+    left: Math.max(20, window.scrollX + window.innerWidth - 380)
+  };
+
+  const candidates = extractCandidateWords(fullText, 40);
+  if (candidates.length === 0) {
+    showKeywordToast("No key words found on page.", viewportRect);
+    return;
+  }
+
+  const loadingIndicator = showKeywordLoading(viewportRect);
+
+  chrome.runtime.sendMessage(
+    {
+      action: 'extractKeywords',
+      text: fullText,
+      words: candidates
+    },
+    (response) => {
+      loadingIndicator?.remove();
+      if (chrome.runtime.lastError) {
+        console.warn('[Jev Guard] Keywords communication error:', chrome.runtime.lastError.message);
+        showKeywordToast("Communication error.", viewportRect);
+        return;
+      }
+
+      if (response && response.success && Array.isArray(response.results)) {
+        renderKeywordResults(response.results, viewportRect);
+      } else if (response && response.error) {
+        console.error('[Jev Guard] Keywords API error:', response.error);
+        showKeywordToast(`Error: ${response.error}`, viewportRect);
+      }
+    }
+  );
+}
+
+function showKeywordLoading(rect) {
+  const toast = document.createElement('div');
+  toast.className = 'jev-keywords-card jev-keywords-loading';
+  toast.style.top = `${Math.round(rect.bottom + window.scrollY + 6)}px`;
+  toast.style.left = `${Math.round(rect.left + window.scrollX)}px`;
+  toast.innerHTML = '<span>⚡ Jev: extracting main words...</span>';
+  document.body.appendChild(toast);
+  return toast;
+}
+
+function showKeywordToast(message, rect) {
+  const toast = document.createElement('div');
+  toast.className = 'jev-keywords-card';
+  toast.style.top = `${Math.round(rect.bottom + window.scrollY + 6)}px`;
+  toast.style.left = `${Math.round(rect.left + window.scrollX)}px`;
+  toast.textContent = message;
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 2500);
+}
+
+function renderKeywordResults(results, rect) {
+  // Filter by threshold (>= 60%), keeping the original order in which words appeared in text
+  const filtered = results
+    .filter(r => typeof r.probability === 'number' && r.probability >= 0.60);
+
+  const container = document.createElement('div');
+  container.className = 'jev-keywords-card';
+  container.style.top = `${Math.round(rect.bottom + window.scrollY + 6)}px`;
+  container.style.left = `${Math.round(rect.left + window.scrollX)}px`;
+
+  const header = document.createElement('div');
+  header.className = 'jev-keywords-header';
+
+  const title = document.createElement('span');
+  title.className = 'jev-keywords-title';
+  title.textContent = '✨ Key Words (Jev)';
+  header.appendChild(title);
+
+  const actions = document.createElement('div');
+  actions.className = 'jev-keywords-actions';
+
+  const copyBtn = document.createElement('button');
+  copyBtn.className = 'jev-btn-link';
+  copyBtn.textContent = 'Copy';
+  copyBtn.title = 'Copy main words to clipboard';
+  copyBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const wordList = filtered.map(k => k.word).join(', ');
+    navigator.clipboard.writeText(wordList).then(() => {
+      copyBtn.textContent = 'Copied!';
+      setTimeout(() => { copyBtn.textContent = 'Copy'; }, 1500);
+    });
+  });
+  actions.appendChild(copyBtn);
+
+  const closeBtn = document.createElement('button');
+  closeBtn.className = 'jev-btn-close';
+  closeBtn.textContent = '×';
+  closeBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    container.remove();
+  });
+  actions.appendChild(closeBtn);
+
+  header.appendChild(actions);
+  container.appendChild(header);
+
+  const listContainer = document.createElement('div');
+  listContainer.className = 'jev-keywords-list';
+
+  if (filtered.length === 0) {
+    const emptyMsg = document.createElement('div');
+    emptyMsg.className = 'jev-keywords-empty';
+    emptyMsg.textContent = 'No strong keywords identified above 60% threshold.';
+    listContainer.appendChild(emptyMsg);
+  } else {
+    for (const item of filtered) {
+      const chip = document.createElement('span');
+      chip.className = 'jev-keyword-chip';
+      chip.innerHTML = `<span class="jev-kw-text">${item.word}</span>`;
+      listContainer.appendChild(chip);
+    }
+  }
+
+  container.appendChild(listContainer);
+  document.body.appendChild(container);
+}
+

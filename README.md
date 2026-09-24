@@ -6,7 +6,10 @@ A **Manifest V3** browser extension that filters out fraud, advertising, AI slop
 
 - **Automatic content scanning** — the extension analyzes page text in the background as you browse (including dynamically added content via `MutationObserver`).
 - **Selectable scan scope** — choose in the popup between *Entire page* (automatic scanning) and *Selected text only* (nothing is scanned until you ask for it).
-- **Context menu action** — select any fragment of a page, right-click and choose **“Jev Content Guard: check selection”** to analyze exactly that fragment and pin **all** matching badges next to it.
+- **Context menu actions**:
+  - **Check selection**: Select any fragment of a page, right-click and choose **“Jev Content Guard: check selection”** to analyze content categories and pin matching badges next to it.
+  - **Extract main words from selection**: Select any fragment, right-click and choose **“Jev: extract main words from selection”** to ask Jev which words have the most meaning and core significance, showing them in their original casing and order in text with one-click clipboard copying.
+  - **Extract main words from page**: Right-click anywhere on the page and choose **“Jev: extract main words from page”** to extract the key conceptual words for the entire page's main content.
 - **8 detection categories**, each reported by the Jev AI model with a probability score:
   | Flag | Badge | Category |
   |---|---|---|
