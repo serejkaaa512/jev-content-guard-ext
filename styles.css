@@ -82,9 +82,9 @@
 .jev-theme-toxic { border-color: #cc0000 !important; box-shadow: 0 4px 14px rgba(204, 0, 0, 0.35) !important; }
 .jev-theme-plagiat { border-color: #e8e8f0 !important; box-shadow: 0 4px 14px rgba(232, 232, 240, 0.3) !important; }
 
-/* Keyword extraction card */
+/* Keyword extraction card - fixed position on viewport so it remains visible while scrolling */
 .jev-keywords-card {
-  position: absolute !important;
+  position: fixed !important;
   z-index: 10002 !important;
   background: #ffffff !important;
   color: #1a1a1a !important;
@@ -147,6 +147,48 @@
   font-size: 12px !important;
   font-weight: 500 !important;
   cursor: pointer !important;
+
+/* Highlighted keywords in document */
+mark.jev-keyword-highlight {
+  background-color: rgba(255, 224, 102, 0.45) !important;
+  color: inherit !important;
+  border-radius: 3px !important;
+  padding: 1px 3px !important;
+  transition: background-color 0.3s ease, box-shadow 0.3s ease !important;
+}
+
+mark.jev-keyword-highlight.jev-keyword-focused {
+  background-color: rgba(255, 179, 0, 0.9) !important;
+  box-shadow: 0 0 0 3px rgba(255, 179, 0, 0.4) !important;
+}
+
+@media (prefers-color-scheme: dark) {
+  mark.jev-keyword-highlight {
+    background-color: rgba(255, 204, 0, 0.25) !important;
+  }
+  mark.jev-keyword-highlight.jev-keyword-focused {
+    background-color: rgba(255, 204, 0, 0.7) !important;
+    box-shadow: 0 0 0 3px rgba(255, 204, 0, 0.4) !important;
+  }
+}
+
+.jev-keyword-chip {
+  cursor: pointer !important;
+  user-select: none !important;
+  transition: transform 0.15s ease, background-color 0.15s ease !important;
+}
+
+.jev-keyword-chip:hover {
+  transform: translateY(-1px) !important;
+  background: #e3e7ef !important;
+}
+
+@media (prefers-color-scheme: dark) {
+  .jev-keyword-chip:hover {
+    background: #383847 !important;
+  }
+}
+
   padding: 2px 4px !important;
   border-radius: 4px !important;
 }

@@ -484,6 +484,10 @@ function extractKeywordsFromSelection() {
   if (!rawText) return;
 
   const rect = selection.getRangeAt(0).getBoundingClientRect();
+  const range = selection.getRangeAt(0);
+  const commonAncestor = range.commonAncestorContainer;
+  const scopeElement = commonAncestor.nodeType === Node.ELEMENT_NODE ? commonAncestor : commonAncestor.parentElement || document.body;
+
   const candidates = extractCandidateWords(rawText, 35);
 
   if (candidates.length === 0) {
@@ -508,7 +512,7 @@ function extractKeywordsFromSelection() {
       }
 
       if (response && response.success && Array.isArray(response.results)) {
-        renderKeywordResults(response.results, rect);
+        renderKeywordResults(response.results, rect, scopeElement);
       } else if (response && response.error) {
         console.error('[Jev Guard] Keywords API error:', response.error);
         showKeywordToast(`Error: ${response.error}`, rect);
@@ -541,9 +545,9 @@ function extractKeywordsFromPage() {
 
   // Floating placement near the top right of the viewport
   const viewportRect = {
-    top: window.scrollY + 80,
-    bottom: window.scrollY + 80,
-    left: Math.max(20, window.scrollX + window.innerWidth - 380)
+    top: 80,
+    bottom: 80,
+    left: Math.max(20, window.innerWidth - 380)
   };
 
   const candidates = extractCandidateWords(fullText, 40);
@@ -578,11 +582,35 @@ function extractKeywordsFromPage() {
   );
 }
 
+function computeCardViewportPosition(rect) {
+  const cardWidth = 360;
+  const padding = 16;
+  const viewportWidth = window.innerWidth;
+  const viewportHeight = window.innerHeight;
+
+  let left = rect.left;
+  let top = rect.bottom + 6;
+
+  // Horizontal clamping within viewport
+  if (left + cardWidth > viewportWidth - padding) {
+    left = Math.max(padding, viewportWidth - cardWidth - padding);
+  }
+  if (left < padding) left = padding;
+
+  // If card overflows viewport bottom, position it above the target
+  if (top + 160 > viewportHeight - padding) {
+    top = Math.max(padding, rect.top - 180);
+  }
+
+  return { top, left };
+}
+
 function showKeywordLoading(rect) {
   const toast = document.createElement('div');
   toast.className = 'jev-keywords-card jev-keywords-loading';
-  toast.style.top = `${Math.round(rect.bottom + window.scrollY + 6)}px`;
-  toast.style.left = `${Math.round(rect.left + window.scrollX)}px`;
+  const pos = computeCardViewportPosition(rect);
+  toast.style.top = `${Math.round(pos.top)}px`;
+  toast.style.left = `${Math.round(pos.left)}px`;
   toast.innerHTML = '<span>⚡ Jev: extracting main words...</span>';
   document.body.appendChild(toast);
   return toast;
@@ -591,22 +619,165 @@ function showKeywordLoading(rect) {
 function showKeywordToast(message, rect) {
   const toast = document.createElement('div');
   toast.className = 'jev-keywords-card';
-  toast.style.top = `${Math.round(rect.bottom + window.scrollY + 6)}px`;
-  toast.style.left = `${Math.round(rect.left + window.scrollX)}px`;
+  const pos = computeCardViewportPosition(rect);
+  toast.style.top = `${Math.round(pos.top)}px`;
+  toast.style.left = `${Math.round(pos.left)}px`;
   toast.textContent = message;
   document.body.appendChild(toast);
   setTimeout(() => toast.remove(), 2500);
 }
 
-function renderKeywordResults(results, rect) {
+let activeKeywordCard = null;
+
+function removeKeywordCardAndHighlights() {
+  clearKeywordHighlights();
+  if (activeKeywordCard && activeKeywordCard.parentNode) {
+    activeKeywordCard.remove();
+    activeKeywordCard = null;
+  }
+}
+
+// Clean up floating keyword card and highlights if page is unloaded or hidden
+window.addEventListener('beforeunload', removeKeywordCardAndHighlights);
+window.addEventListener('pagehide', removeKeywordCardAndHighlights);
+
+let activeKeywordHighlights = [];
+
+function clearKeywordHighlights() {
+  for (const mark of activeKeywordHighlights) {
+    if (mark.parentNode) {
+      const parent = mark.parentNode;
+      while (mark.firstChild) {
+        parent.insertBefore(mark.firstChild, mark);
+      }
+      parent.removeChild(mark);
+      parent.normalize();
+    }
+  }
+  activeKeywordHighlights = [];
+}
+
+function highlightKeywordsInScope(words, scopeElement) {
+  clearKeywordHighlights();
+  if (!words || words.length === 0 || !scopeElement) return;
+
+  const wordMap = new Map();
+  for (const w of words) {
+    wordMap.set(w.toLowerCase(), w);
+  }
+
+  const escapedWords = words.map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+  const regex = new RegExp(`(?<![\\p{L}\\p{M}])(${escapedWords.join('|')})(?![\\p{L}\\p{M}])`, 'gui');
+
+  const walker = document.createTreeWalker(
+    scopeElement,
+    NodeFilter.SHOW_TEXT,
+    {
+      acceptNode(node) {
+        if (!node.nodeValue || !node.nodeValue.trim()) return NodeFilter.FILTER_REJECT;
+        const parent = node.parentElement;
+        if (!parent) return NodeFilter.FILTER_REJECT;
+        const tag = parent.tagName.toLowerCase();
+        if (['script', 'style', 'noscript', 'textarea', 'input', 'mark'].includes(tag)) {
+          return NodeFilter.FILTER_REJECT;
+        }
+        if (parent.closest('.jev-keywords-card, .jev-blur-overlay, .jev-selection-badges, .jev-soft-badge-stack')) {
+          return NodeFilter.FILTER_REJECT;
+        }
+        return NodeFilter.FILTER_ACCEPT;
+      }
+    }
+  );
+
+  const textNodes = [];
+  let currentNode;
+  while ((currentNode = walker.nextNode())) {
+    textNodes.push(currentNode);
+  }
+
+  for (const node of textNodes) {
+    const text = node.nodeValue;
+    if (!text || !regex.test(text)) continue;
+    regex.lastIndex = 0;
+
+    const fragment = document.createDocumentFragment();
+    let lastIdx = 0;
+    let match;
+
+    while ((match = regex.exec(text)) !== null) {
+      const matchedWord = match[0];
+      const matchStart = match.index;
+      const matchEnd = matchStart + matchedWord.length;
+
+      if (matchStart > lastIdx) {
+        fragment.appendChild(document.createTextNode(text.substring(lastIdx, matchStart)));
+      }
+
+      const mark = document.createElement('mark');
+      mark.className = 'jev-keyword-highlight';
+      mark.dataset.jevWord = matchedWord.toLowerCase();
+      mark.textContent = matchedWord;
+      fragment.appendChild(mark);
+      activeKeywordHighlights.push(mark);
+
+      lastIdx = matchEnd;
+    }
+
+    if (lastIdx < text.length) {
+      fragment.appendChild(document.createTextNode(text.substring(lastIdx)));
+    }
+
+    if (node.parentNode) {
+      node.parentNode.replaceChild(fragment, node);
+    }
+  }
+}
+
+function focusNextKeywordHighlight(word) {
+  const lower = word.toLowerCase();
+  const matching = activeKeywordHighlights.filter(m => m.dataset.jevWord === lower);
+  if (matching.length === 0) return;
+
+  // Clear previous focused state
+  for (const m of activeKeywordHighlights) {
+    m.classList.remove('jev-keyword-focused');
+  }
+
+  // Find next element to focus (cycle through if clicked multiple times)
+  const currentFocusedIndex = matching.findIndex(m => m.dataset.currentFocus === 'true');
+  for (const m of matching) {
+    delete m.dataset.currentFocus;
+  }
+
+  const nextIndex = (currentFocusedIndex + 1) % matching.length;
+  const targetMark = matching[nextIndex];
+  targetMark.dataset.currentFocus = 'true';
+  targetMark.classList.add('jev-keyword-focused');
+
+  targetMark.scrollIntoView({
+    behavior: 'smooth',
+    block: 'center',
+    inline: 'nearest'
+  });
+}
+
+function renderKeywordResults(results, rect, scopeElement = document.body) {
+  // Remove any previously opened card
+  removeKeywordCardAndHighlights();
+
   // Filter by threshold (>= 60%), keeping the original order in which words appeared in text
   const filtered = results
     .filter(r => typeof r.probability === 'number' && r.probability >= 0.60);
 
+  // Automatically highlight qualifying words in the page
+  const keywordStrings = filtered.map(item => item.word);
+  highlightKeywordsInScope(keywordStrings, scopeElement);
+
   const container = document.createElement('div');
   container.className = 'jev-keywords-card';
-  container.style.top = `${Math.round(rect.bottom + window.scrollY + 6)}px`;
-  container.style.left = `${Math.round(rect.left + window.scrollX)}px`;
+  const pos = computeCardViewportPosition(rect);
+  container.style.top = `${Math.round(pos.top)}px`;
+  container.style.left = `${Math.round(pos.left)}px`;
 
   const header = document.createElement('div');
   header.className = 'jev-keywords-header';
@@ -638,7 +809,7 @@ function renderKeywordResults(results, rect) {
   closeBtn.textContent = '×';
   closeBtn.addEventListener('click', (e) => {
     e.stopPropagation();
-    container.remove();
+    removeKeywordCardAndHighlights();
   });
   actions.appendChild(closeBtn);
 
@@ -657,12 +828,21 @@ function renderKeywordResults(results, rect) {
     for (const item of filtered) {
       const chip = document.createElement('span');
       chip.className = 'jev-keyword-chip';
+      chip.title = 'Click to focus and scroll to this word in text';
       chip.innerHTML = `<span class="jev-kw-text">${item.word}</span>`;
+
+      chip.addEventListener('click', (e) => {
+        e.stopPropagation();
+        focusNextKeywordHighlight(item.word);
+      });
+
       listContainer.appendChild(chip);
     }
   }
 
   container.appendChild(listContainer);
   document.body.appendChild(container);
+  activeKeywordCard = container;
 }
+
 
