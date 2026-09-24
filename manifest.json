@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Jev Content Guard",
   "version": "1.6",
-  "description": "Filters fraud, ads, AI slop, spam, clickbait, plagiarism & toxicity, and extracts & highlights core key words from selection or page using TypeSafe Jev AI.",
+  "description": "Filters fraud, ads, AI slop, spam, clickbait, plagiarism & toxicity, and highlights keywords on page using TypeSafe Jev AI.",
   "permissions": [
     "storage",
     "activeTab",
