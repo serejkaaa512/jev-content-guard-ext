@@ -1,3 +1,22 @@
+const SELECTION_MENU_ID = 'jev-analyze-selection';
+
+chrome.runtime.onInstalled.addListener(() => {
+  chrome.contextMenus.create({
+    id: SELECTION_MENU_ID,
+    title: 'Jev Content Guard: check selection',
+    contexts: ['selection']
+  });
+});
+
+chrome.contextMenus.onClicked.addListener((info, tab) => {
+  if (info.menuItemId !== SELECTION_MENU_ID || !tab || !tab.id) return;
+
+  chrome.tabs.sendMessage(tab.id, { action: 'analyzeSelection' }, () => {
+    // The content script may be absent (e.g. browser internal pages).
+    void chrome.runtime.lastError;
+  });
+});
+
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "analyzeContent") {
     chrome.storage.local.get(['jevApiKey'], async (result) => {

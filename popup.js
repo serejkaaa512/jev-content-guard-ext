@@ -14,10 +14,13 @@ document.addEventListener('DOMContentLoaded', () => {
     is_plagiat: 25
   };
 
-  chrome.storage.local.get(['jevApiKey', 'jevThresholds'], (result) => {
+  chrome.storage.local.get(['jevApiKey', 'jevThresholds', 'jevScanScope'], (result) => {
     if (result.jevApiKey) {
       apiKeyInput.value = result.jevApiKey;
     }
+    const scope = result.jevScanScope === 'selection' ? 'selection' : 'page';
+    const scopeInput = document.querySelector(`input[name="scanScope"][value="${scope}"]`);
+    if (scopeInput) scopeInput.checked = true;
     const saved = result.jevThresholds || {};
     // Storage holds fractions (0.25); popup shows percents (25).
     const thresholds = { ...DEFAULT_THRESHOLDS };
@@ -75,9 +78,16 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    chrome.storage.local.set({ jevApiKey: key, jevThresholds: { ...thresholds, upper_limits: upperLimits } }, () => {
-      status.style.display = 'block';
-      setTimeout(() => { status.style.display = 'none'; }, 2000);
-    });
+    const scanScope = document.querySelector('input[name="scanScope"]:checked')?.value === 'selection'
+      ? 'selection'
+      : 'page';
+
+    chrome.storage.local.set(
+      { jevApiKey: key, jevThresholds: { ...thresholds, upper_limits: upperLimits }, jevScanScope: scanScope },
+      () => {
+        status.style.display = 'block';
+        setTimeout(() => { status.style.display = 'none'; }, 2000);
+      }
+    );
   });
 });

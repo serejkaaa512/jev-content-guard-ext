@@ -40,8 +40,12 @@ function loadThresholds() {
 }
 
 chrome.storage.onChanged.addListener((changes, areaName) => {
-  if (areaName === "local" && changes.jevThresholds) {
+  if (areaName !== "local") return;
+  if (changes.jevThresholds) {
     applyThresholds({ ...DEFAULT_THRESHOLDS, ...(changes.jevThresholds.newValue || {}) });
+  }
+  if (changes.jevScanScope) {
+    applyScanScope(changes.jevScanScope.newValue === 'selection' ? 'selection' : 'page');
   }
 });
 
@@ -57,13 +61,46 @@ const processedElements = new WeakSet();
 let analysisQueue = [];
 let debounceTimer = null;
 
+// "page" scans the whole document automatically; "selection" analyzes only
+// fragments explicitly picked by the user through the context menu.
+// `null` means the saved preference has not loaded yet.
+let scanScope = null;
+let domReady = false;
+let observersStarted = false;
+
 initContentScanner();
 
 function initContentScanner() {
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", setupObservers);
+    document.addEventListener("DOMContentLoaded", () => {
+      domReady = true;
+      startScanningIfReady();
+    });
   } else {
-    setupObservers();
+    domReady = true;
+  }
+
+  chrome.storage.local.get(['jevScanScope'], (result) => {
+    applyScanScope(result.jevScanScope === 'selection' ? 'selection' : 'page');
+  });
+}
+
+function applyScanScope(scope) {
+  const previous = scanScope;
+  scanScope = scope;
+  startScanningIfReady();
+  // Resuming whole-page mode walks the DOM again for never-analyzed elements.
+  if (previous === 'selection' && scope === 'page' && observersStarted) {
+    queueElementForAnalysis(document.body);
+  }
+}
+
+function startScanningIfReady() {
+  if (!domReady || scanScope === null || observersStarted) return;
+  observersStarted = true;
+  setupObservers();
+  if (scanScope === 'page') {
+    queueElementForAnalysis(document.body);
   }
 }
 
@@ -82,11 +119,13 @@ function setupObservers() {
     childList: true,
     subtree: true
   });
-
-  queueElementForAnalysis(document.body);
 }
 
 function queueElementForAnalysis(rootElement) {
+  // Automatic scanning is limited to whole-page scope; selections are analyzed
+  // on demand through the context menu.
+  if (scanScope !== 'page') return;
+
   // Only the innermost matching elements are analyzed. If an element contains
   // another matching target (e.g. an <article> wrapping <p> tags), it is skipped
   // so the same text is never sent to the API as part of multiple chunks.
@@ -115,6 +154,11 @@ function queueElementForAnalysis(rootElement) {
 }
 
 async function processQueue() {
+  // The scope switched to "selection" while items were pending: drop them.
+  if (scanScope !== 'page') {
+    analysisQueue.length = 0;
+    return;
+  }
   if (analysisQueue.length === 0) return;
 
   const currentBatch = analysisQueue.splice(0, analysisQueue.length);
@@ -173,26 +217,30 @@ function getProbability(flag) {
   return 0;
 }
 
-function processJevResults(domElement, flags) {
-  const MATCHERS = [
-    { flag: 'is_fraud', text: '⚠️ scam', theme: 'jev-theme-fraud' },
-    { flag: 'is_advertising', text: '📢 adv', theme: 'jev-theme-ad' },
-    { flag: 'is_ai_generated', text: '🤖 AI', theme: 'jev-theme-ai' },
-    { flag: 'is_spam', text: '🚫 spam', theme: 'jev-theme-spam' },
-    { flag: 'is_clickbait', text: '🪤 bait', theme: 'jev-theme-clickbait' },
-    { flag: 'is_infobusiness', text: '🤡 guru', theme: 'jev-theme-infobiz' },
-    { flag: 'is_toxic', text: '🤬 toxic', theme: 'jev-theme-toxic' },
-    { flag: 'is_plagiat', text: '📕 plag', theme: 'jev-theme-plagiat' }
-  ];
+const MATCHERS = [
+  { flag: 'is_fraud', text: '⚠️ scam', theme: 'jev-theme-fraud' },
+  { flag: 'is_advertising', text: '📢 adv', theme: 'jev-theme-ad' },
+  { flag: 'is_ai_generated', text: '🤖 AI', theme: 'jev-theme-ai' },
+  { flag: 'is_spam', text: '🚫 spam', theme: 'jev-theme-spam' },
+  { flag: 'is_clickbait', text: '🪤 bait', theme: 'jev-theme-clickbait' },
+  { flag: 'is_infobusiness', text: '🤡 guru', theme: 'jev-theme-infobiz' },
+  { flag: 'is_toxic', text: '🤬 toxic', theme: 'jev-theme-toxic' },
+  { flag: 'is_plagiat', text: '📕 plag', theme: 'jev-theme-plagiat' }
+];
 
-  // Collect all matching flags, sorted by probability descending.
-  const matched = MATCHERS
+// Collect all flags at/above their threshold, sorted by probability descending.
+function matchFlags(flags) {
+  return MATCHERS
     .map(({ flag, text, theme }) => ({
       flag, text, theme,
       probability: getProbability(flags[flag])
     }))
     .filter(({ probability, flag }) => probability >= thresholds[flag])
     .sort((a, b) => b.probability - a.probability);
+}
+
+function processJevResults(domElement, flags) {
+  const matched = matchFlags(flags);
 
   if (matched.length === 0) return;
 
@@ -286,4 +334,67 @@ function flagElement(element, reasonText, themeClass, mode) {
   });
 
   overlay.appendChild(badge);
+}
+
+// Context-menu entry point: analyzes the current selection through the same
+// API pipeline and pins every matching badge next to it. Unlike automatic
+// scanning, all matches are shown (no short-text top-match restriction).
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.action === 'analyzeSelection') {
+    analyzeSelection();
+    sendResponse({ ok: true });
+  }
+});
+
+function analyzeSelection() {
+  const selection = window.getSelection();
+  if (!selection || selection.rangeCount === 0 || selection.isCollapsed) return;
+
+  const text = selection.toString().replace(/\s+/g, ' ').trim();
+  if (!text) return;
+
+  // Captured before the async request so badges land next to the fragment
+  // the user actually picked.
+  const rect = selection.getRangeAt(0).getBoundingClientRect();
+
+  chrome.runtime.sendMessage(
+    { action: 'analyzeContent', text: text.slice(0, MAX_CHAR_LENGTH) },
+    (response) => {
+      if (chrome.runtime.lastError) {
+        console.warn('[Jev Guard] Communication error:', chrome.runtime.lastError.message);
+        return;
+      }
+      if (response && response.success && response.results) {
+        renderSelectionBadges(response.results, rect);
+      } else if (response && response.error) {
+        console.error('[Jev Guard] API Error:', response.error);
+      }
+    }
+  );
+}
+
+function renderSelectionBadges(flags, rect) {
+  const matched = matchFlags(flags);
+  if (matched.length === 0) return;
+
+  const container = document.createElement('div');
+  container.className = 'jev-selection-badges';
+  container.style.top = `${Math.round(rect.bottom + window.scrollY + 6)}px`;
+  container.style.left = `${Math.round(rect.left + window.scrollX)}px`;
+
+  for (const { probability, text, theme } of matched) {
+    const percent = Math.round(probability * 100);
+    const badge = document.createElement('button');
+    badge.className = `jev-warning-badge jev-soft-badge ${theme}`;
+    badge.textContent = `${text} · ${percent}%`;
+    badge.addEventListener('click', (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      badge.remove();
+      if (!container.firstChild) container.remove();
+    });
+    container.appendChild(badge);
+  }
+
+  document.body.appendChild(container);
 }

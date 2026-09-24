@@ -5,6 +5,8 @@ A **Manifest V3** browser extension that filters out fraud, advertising, AI slop
 ## ✨ Features
 
 - **Automatic content scanning** — the extension analyzes page text in the background as you browse (including dynamically added content via `MutationObserver`).
+- **Selectable scan scope** — choose in the popup between *Entire page* (automatic scanning) and *Selected text only* (nothing is scanned until you ask for it).
+- **Context menu action** — select any fragment of a page, right-click and choose **“Jev Content Guard: check selection”** to analyze exactly that fragment and pin **all** matching badges next to it.
 - **8 detection categories**, each reported by the Jev AI model with a probability score:
   | Flag | Badge | Category |
   |---|---|---|
@@ -26,9 +28,9 @@ A **Manifest V3** browser extension that filters out fraud, advertising, AI slop
 ```
 jev-content-guard-ext/
 ├── manifest.json    # MV3 extension manifest (permissions, scripts, popup)
-├── background.js    # Service worker: proxies analysis requests to the Jev API
+├── background.js    # Service worker: context menu entry + proxies analysis requests to the Jev API
 ├── content.js       # Content script: scans DOM, queues text, renders badges/overlays
-├── popup.html       # Settings popup UI (API key + threshold grid)
+├── popup.html       # Settings popup UI (API key + thresholds + scan scope)
 ├── popup.js         # Popup logic: load/save API key and thresholds
 └── styles.css       # Badge & blur overlay styling, per-category color themes
 ```
@@ -45,6 +47,10 @@ jev-content-guard-ext/
 
 Both `{ probability: N }` and the native Jev format `{ type: "noul", noul: N }` responses are supported.
 
+6. **Scan scope** (`jevScanScope` setting in the popup):
+   - *Entire page* — the automatic pipeline above runs as you browse.
+   - *Selected text only* — automatic scanning is disabled; analysis runs only through the context-menu item. The selected fragment (no minimum length, capped at 4000 characters) goes through the same API, and **all** flags above their thresholds are rendered as dismissible badges pinned next to the selection (short selections included — the automatic top-match-only rule does not apply here).
+
 ## 🚀 Installation (Developer Mode)
 
 1. Download or clone this repository.
@@ -60,14 +66,16 @@ Both `{ probability: N }` and the native Jev format `{ type: "noul", noul: N }` 
 3. Optionally tune per-category **lower / upper thresholds** (percent, 1–100). Defaults:
    - Fraud: 50% · Advertising: 20% · AI: 25% · Spam: 25% · Clickbait: 20% · Infobusiness: 25% · Toxicity: 25%
    - Upper limits default to 80% for all categories and must be strictly above the lower threshold.
-4. Click **Save settings** — thresholds are applied to open tabs instantly via the `chrome.storage.onChanged` listener.
+4. Click **Save settings** — thresholds and the scan scope are applied to open tabs instantly via the `chrome.storage.onChanged` listener.
+5. Optionally pick **Selected text only** as the scan scope — then highlight a fragment, right-click it and choose **“Jev Content Guard: check selection”** to analyze just that part of the page.
 
 ## 🔐 Permissions
 
 | Permission | Why it's needed |
 |---|---|
-| `storage` | Store API key and thresholds locally |
+| `storage` | Store API key, thresholds, and scan scope locally |
 | `activeTab` / `scripting` | Interact with the current page |
+| `contextMenus` | Offer “check selection” in the right-click menu |
 | `host_permissions: https://api.typesafe.ai/*` | Call the Jev analysis API |
 | Content script on `<all_urls>` | Scan text on every page you visit |
 

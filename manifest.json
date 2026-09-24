@@ -1,12 +1,13 @@
 {
   "manifest_version": 3,
   "name": "Jev Content Guard",
-  "version": "1.4",
+  "version": "1.5",
   "description": "Filtering out fraud, advertising, AI slop, spam, clickbait, \"info-gypsy\" schemes, and toxicity using TypeSafe Jev AI.",
   "permissions": [
     "storage",
     "activeTab",
-    "scripting"
+    "scripting",
+    "contextMenus"
   ],
   "host_permissions": [
     "https://api.typesafe.ai/*"
