@@ -1,15 +1,23 @@
 # Jev Content Guard
 
-A **Manifest V3** browser extension that filters out fraud, advertising, AI slop, spam, clickbait, "info-gypsy" schemes, and toxicity on any web page — powered by the [TypeSafe Jev AI](https://api.typesafe.ai) content analysis API.
+A **Manifest V3** browser extension that filters out fraud, advertising, AI slop, spam, clickbait, "info-gypsy" schemes, and toxicity on any web page, and extracts & highlights core key words from selections or whole pages — powered by the [TypeSafe Jev AI](https://api.typesafe.ai) content analysis API.
 
 ## ✨ Features
 
 - **Automatic content scanning** — the extension analyzes page text in the background as you browse (including dynamically added content via `MutationObserver`).
 - **Selectable scan scope** — choose in the popup between *Entire page* (automatic scanning) and *Selected text only* (nothing is scanned until you ask for it).
 - **Context menu actions**:
-  - **Check selection**: Select any fragment of a page, right-click and choose **“Jev Content Guard: check selection”** to analyze content categories and pin matching badges next to it.
-  - **Extract main words from selection**: Select any fragment, right-click and choose **“Jev: extract main words from selection”** to ask Jev which words have the most meaning and core significance, showing them in their original casing and order in text with one-click clipboard copying.
-  - **Extract main words from page**: Right-click anywhere on the page and choose **“Jev: extract main words from page”** to extract the key conceptual words for the entire page's main content.
+  - **Check selection**: Select any fragment of a page, right-click and choose **“Jev: check selection”** to analyze content categories and pin matching badges next to it.
+  - **Extract main words from selection**: Select any fragment, right-click and choose **“Jev: keywords in selection”** to ask Jev which words have the most meaning and core significance.
+  - **Extract main words from page**: Right-click anywhere on the page and choose **“Jev: keywords on page”** to extract key conceptual words across the main content of the entire page.
+- **Key Word Extraction & Highlighting**:
+  - **Extraction without generation**: Since Jev evaluates parallel structured questions rather than generating text, words are tokenized client-side, filtered against multilingual stop words (English, Russian, Spanish, French, German, Chinese), and evaluated in parallel via Jev `noul` questions.
+  - **Strict threshold (≥ 60%)**: Only words judged to carry the core meaning of the text qualify.
+  - **Jev semantic deduplication**: Synonyms and morphological variants are compared pairwise via Jev in the context of the text; redundant terms are deduplicated automatically.
+  - **Original order & casing preserved**: Words stay in the exact casing and sequence in which they appear in the original text.
+  - **In-text highlighting & interactive navigation**: Words above the threshold are highlighted in the document with `<mark>`. Clicking any keyword chip in the floating card smoothly scrolls and centers the viewport on that word, cycling through multiple occurrences.
+  - **Sticky viewport placement**: The floating keywords card stays fixed in view during scrolling.
+  - **Automatic cleanup**: Closing the card, clicking any link on the page, or closing/navigating away from the page immediately unmounts the card and restores text nodes back to normal.
 - **8 detection categories**, each reported by the Jev AI model with a probability score:
   | Flag | Badge | Category |
   |---|---|---|
@@ -30,16 +38,17 @@ A **Manifest V3** browser extension that filters out fraud, advertising, AI slop
 
 ```
 jev-content-guard-ext/
-├── manifest.json    # MV3 extension manifest (permissions, scripts, popup)
-├── background.js    # Service worker: context menu entry + proxies analysis requests to the Jev API
-├── content.js       # Content script: scans DOM, queues text, renders badges/overlays
+├── manifest.json    # MV3 extension manifest (permissions, scripts, popup, description)
+├── background.js    # Service worker: context menu entries + proxies category & keyword requests to Jev API
+├── content.js       # Content script: DOM scanning, keyword extraction & highlighting, badges/overlays
 ├── popup.html       # Settings popup UI (API key + thresholds + scan scope)
 ├── popup.js         # Popup logic: load/save API key and thresholds
-└── styles.css       # Badge & blur overlay styling, per-category color themes
+└── styles.css       # Badge, blur overlay, floating keyword card & text highlight styling
 ```
 
 ## ⚙️ How It Works
 
+### 1. Safety & Content Guard Scanning
 1. **`content.js`** runs on all pages (`<all_urls>`). It selects candidate text blocks (`p`, `article`, `section`, `li`, `[role="article"]`, and several site-specific selectors, e.g. Habr classes), skipping navigation, headers, footers, forms, and nested containers (only innermost elements are analyzed).
 2. Text is normalized (whitespace collapsed) and filtered by length — between **60** and **4000** characters. Elements are queued and processed in batches (debounced 400 ms, max **3 concurrent** requests), then tracked in a `WeakSet` so each element is analyzed only once.
 3. The content script sends an `analyzeContent` message to **`background.js`** (the service worker), which is the only component allowed to call the API.
@@ -53,6 +62,17 @@ Both `{ probability: N }` and the native Jev format `{ type: "noul", noul: N }` 
 6. **Scan scope** (`jevScanScope` setting in the popup):
    - *Entire page* — the automatic pipeline above runs as you browse.
    - *Selected text only* — automatic scanning is disabled; analysis runs only through the context-menu item. The selected fragment (no minimum length, capped at 4000 characters) goes through the same API, and **all** flags above their thresholds are rendered as dismissible badges pinned next to the selection (short selections included — the automatic top-match-only rule does not apply here).
+
+### 2. Main Words (Keyword) Extraction Pipeline
+1. **Candidate Extraction**: Selected text or page content is tokenized into word candidates using Unicode letter segmentation (`\p{L}+`). Stop words across 6 languages (English, Russian, Spanish, French, German, Chinese) and words shorter than 3 characters are removed. Original order of appearance and casing are preserved.
+2. **Parallel Jev Evaluation**: `background.js` asks Jev parallel `noul` questions asking if each candidate represents a core keyword carrying the key meaning of the text.
+3. **Threshold & Deduplication**: Only words with $\ge 60\%$ significance qualify. If multiple words qualify, Jev checks pairs for identical semantic meaning or synonymy in context, deduplicating redundant items.
+4. **Interactive Display & Navigation**:
+   - The qualifying words are rendered in a fixed floating card on screen.
+   - All occurrences of the words are highlighted directly in the document body.
+   - Clicking a keyword chip smoothly scrolls to and focuses that word in the text (cycling across repeated occurrences).
+   - Clicking the **Copy** button copies the words to the clipboard.
+   - The card and highlights automatically dismiss when a link is clicked, when the page is closed/navigated, or when the `×` button is pressed.
 
 ## 🚀 Installation (Developer Mode)
 
@@ -70,7 +90,10 @@ Both `{ probability: N }` and the native Jev format `{ type: "noul", noul: N }` 
    - Fraud: 50% · Advertising: 20% · AI: 25% · Spam: 25% · Clickbait: 20% · Infobusiness: 25% · Toxicity: 25%
    - Upper limits default to 80% for all categories and must be strictly above the lower threshold.
 4. Click **Save settings** — thresholds and the scan scope are applied to open tabs instantly via the `chrome.storage.onChanged` listener.
-5. Optionally pick **Selected text only** as the scan scope — then highlight a fragment, right-click it and choose **“Jev Content Guard: check selection”** to analyze just that part of the page.
+5. Highlight any fragment or right-click anywhere to use the context menu actions:
+   - **Jev: check selection** — check safety & category flags for selected text.
+   - **Jev: keywords in selection** — extract and highlight key conceptual words in the selected text.
+   - **Jev: keywords on page** — extract and highlight key conceptual words across the entire page.
 
 ## 🔐 Permissions
 
@@ -78,9 +101,9 @@ Both `{ probability: N }` and the native Jev format `{ type: "noul", noul: N }` 
 |---|---|
 | `storage` | Store API key, thresholds, and scan scope locally |
 | `activeTab` / `scripting` | Interact with the current page |
-| `contextMenus` | Offer “check selection” in the right-click menu |
+| `contextMenus` | Offer selection check and keyword extraction in the right-click menu |
 | `host_permissions: https://api.typesafe.ai/*` | Call the Jev analysis API |
-| Content script on `<all_urls>` | Scan text on every page you visit |
+| Content script on `<all_urls>` | Scan text and highlight keywords on visited pages |
 
 ## 🛡️ Privacy Notes
 
@@ -92,7 +115,7 @@ Both `{ probability: N }` and the native Jev format `{ type: "noul", noul: N }` 
 
 - Plain JavaScript (ES2020+), no build step, no dependencies.
 - Chrome Extensions **Manifest V3** (service worker + content scripts + action popup).
-- Native `MutationObserver`, `WeakSet`, and `chrome.storage` APIs.
+- Native `MutationObserver`, `TreeWalker`, `WeakSet`, and `chrome.storage` APIs.
 
 ## 📄 License
 

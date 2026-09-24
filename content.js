@@ -431,7 +431,58 @@ const STOP_WORDS = new Set([
   'тем', 'чтобы', 'нее', 'сейчас', 'были', 'куда', 'зачем', 'всех', 'никогда', 'можно', 'при', 'наконец', 'два', 'об', 'другой',
   'хоть', 'после', 'над', 'больше', 'тот', 'через', 'эти', 'нас', 'про', 'всего', 'них', 'какая', 'много', 'разве', 'три',
   'эту', 'моя', 'впрочем', 'хорошо', 'свою', 'этой', 'перед', 'иногда', 'лучше', 'чуть', 'том', 'нельзя', 'такой', 'им',
-  'более', 'всегда', 'точной', 'между', 'это'
+  'более', 'всегда', 'точной', 'между', 'это',
+  // Spanish common stop words
+  'el', 'la', 'los', 'las', 'un', 'una', 'unos', 'unas', 'de', 'del', 'a', 'al', 'con', 'en', 'para', 'por', 'sin', 'sobre',
+  'tras', 'durante', 'mediante', 'contra', 'hacia', 'desde', 'hasta', 'segun', 'según', 'entre', 'que', 'qué', 'quien',
+  'quién', 'quienes', 'quiénes', 'cual', 'cuál', 'cuales', 'cuáles', 'cuyo', 'cuya', 'cuyos', 'cuyas', 'donde', 'dónde',
+  'cuando', 'cuándo', 'como', 'cómo', 'cuanto', 'cuánto', 'cuanta', 'cuánta', 'cuantos', 'cuántos', 'cuantas', 'cuántas',
+  'porque', 'pero', 'mas', 'más', 'sino', 'aunque', 'si', 'sí', 'no', 'ni', 'o', 'u', 'y', 'e', 'ya', 'tan',
+  'tanto', 'tanta', 'tantos', 'tantas', 'muy', 'mucho', 'mucha', 'muchos', 'muchas', 'poco', 'poca', 'pocos', 'pocas',
+  'todo', 'toda', 'todos', 'todas', 'otro', 'otra', 'otros', 'otras', 'mismo', 'misma', 'mismos', 'mismas', 'este', 'esta',
+  'estos', 'estas', 'ese', 'esa', 'esos', 'esas', 'aquel', 'aquella', 'aquellos', 'aquellas', 'esto', 'eso', 'aquello',
+  'yo', 'tu', 'tú', 'el', 'él', 'ella', 'ello', 'nosotros', 'nosotras', 'vosotros', 'vosotras', 'ellos', 'ellas', 'usted',
+  'ustedes', 'me', 'te', 'se', 'nos', 'os', 'le', 'les', 'lo', 'mi', 'mí', 'mis', 'tus', 'su', 'sus', 'nuestro',
+  'nuestra', 'nuestros', 'nuestras', 'vuestro', 'vuestra', 'vuestros', 'vuestras', 'mio', 'mío', 'mia', 'mía', 'mios',
+  'míos', 'mias', 'mías', 'tuyo', 'tuya', 'tuyos', 'tuyas', 'suyo', 'suya', 'suyos', 'suyas', 'ser', 'es', 'son', 'era',
+  'eran', 'fue', 'fueron', 'sido', 'siendo', 'estar', 'está', 'estan', 'están', 'estaba', 'estaban', 'estuvo',
+  'estuvieron', 'estado', 'estando', 'haber', 'hay', 'ha', 'han', 'habia', 'había', 'habian', 'habían', 'hubo', 'hubieron',
+  'tener', 'tiene', 'tienen', 'tenia', 'tenía', 'tenian', 'tenían', 'tuvo', 'tuvieron', 'hacer', 'hace', 'hacen', 'hacia',
+  'hacía', 'hicieron', 'hecho',
+  // French common stop words
+  'le', 'la', 'les', 'un', 'une', 'des', 'du', 'de', 'au', 'aux', 'ce', 'cet', 'cette', 'ces', 'mon', 'ton',
+  'son', 'ma', 'ta', 'sa', 'mes', 'tes', 'ses', 'notre', 'votre', 'leur', 'nos', 'vos', 'leurs', 'je', 'tu', 'il', 'elle',
+  'on', 'nous', 'vous', 'ils', 'elles', 'me', 'te', 'se', 'lui', 'leur', 'moi', 'toi', 'soi', 'qui', 'que',
+  'quoi', 'dont', 'où', 'ou', 'et', 'mais', 'donc', 'or', 'ni', 'car', 'si', 'ne', 'pas', 'plus', 'moins', 'tres', 'très',
+  'bien', 'aussi', 'comme', 'alors', 'après', 'apres', 'avant', 'avec', 'sans', 'sous', 'sur', 'dans', 'par', 'pour',
+  'vers', 'chez', 'pendant', 'depuis', 'contre', 'entre', 'être', 'etre', 'suis', 'es', 'est', 'sommes', 'êtes',
+  'etes', 'sont', 'été', 'ete', 'étant', 'etant', 'avoir', 'ai', 'as', 'avons', 'avez', 'ont', 'eu', 'ayant', 'faire',
+  'fait', 'font', 'fais', 'pouvoir', 'peut', 'peuvent', 'tout', 'tous', 'toute', 'toutes', 'autre', 'autres',
+  'même', 'meme', 'quel', 'quelle', 'quels', 'quelles',
+  // German common stop words
+  'der', 'die', 'das', 'den', 'dem', 'des', 'ein', 'eine', 'einer', 'eines', 'einem', 'einen', 'und', 'oder', 'aber',
+  'denn', 'doch', 'weil', 'wenn', 'als', 'wie', 'dass', 'daß', 'ob', 'während', 'waehrend', 'obwohl', 'in', 'im',
+  'an', 'am', 'auf', 'aus', 'bei', 'beim', 'mit', 'nach', 'von', 'vom', 'zu', 'zum', 'zur', 'über', 'ueber',
+  'unter', 'vor', 'hinter', 'neben', 'zwischen', 'durch', 'für', 'fuer', 'gegen', 'ohne', 'um', 'ich', 'du', 'er', 'sie',
+  'es', 'wir', 'ihr', 'mich', 'dich', 'ihn', 'uns', 'euch', 'ihnen', 'mir', 'dir', 'ihm', 'mein', 'meine', 'meinem',
+  'meinen', 'meiner', 'meines', 'dein', 'deine', 'sein', 'seine', 'seinem', 'seinen', 'seiner', 'seines', 'ihr', 'ihre',
+  'unser', 'unsere', 'euer', 'eure', 'dieser', 'diese', 'dieses', 'diesen', 'diesem', 'jener', 'jene', 'jenes', 'welcher',
+  'welche', 'welches', 'welchen', 'welchem', 'sein', 'ist', 'sind', 'war', 'waren', 'gewesen', 'haben', 'hat', 'hatte',
+  'hatten', 'gehabt', 'werden', 'wird', 'wurde', 'wurden', 'geworden', 'können', 'koennen', 'kann', 'konnte', 'müssen',
+  'muessen', 'muss', 'musste', 'sollen', 'soll', 'sollte', 'wollen', 'will', 'wollte', 'nicht', 'nichts', 'kein', 'keine',
+  'keinen', 'keinem', 'keiner', 'keines', 'sehr', 'auch', 'noch', 'nur', 'schon', 'wieder', 'hier', 'da', 'dort', 'dann',
+  'so', 'jetzt', 'immer', 'alle', 'aller', 'allen', 'alles', 'man', 'etwas',
+  // Chinese common stop words (particles, pronouns, prepositions, conjunctions)
+  '的', '了', '和', '是', '就', '都', '而', '及', '與', '与', '著', '着', '或', '一', '在', '上', '下', '中', '里',
+  '裡', '后', '後', '前', '到', '從', '从', '向', '對', '对', '把', '被', '讓', '让', '給', '给', '比', '同', '跟',
+  '往', '於', '于', '由', '因', '為', '为', '以', '其', '此', '這', '这', '那', '哪', '誰', '谁', '甚麼', '什么',
+  '怎麽', '怎么', '怎樣', '怎样', '多少', '幾', '几', '每', '各', '我', '你', '他', '她', '它', '我們', '我们', '你們',
+  '你们', '他們', '他们', '她們', '她们', '它們', '它们', '自己', '人家', '大家', '不', '沒', '没', '未',
+  '別', '别', '莫', '勿', '很', '太', '更', '最', '极', '極', '甚', '挺', '越', '又', '也', '再', '還', '还', '常',
+  '常常', '總', '总', '一直', '已經', '已经', '曾', '曾經', '曾经', '剛', '刚', '正', '正在', '將', '将', '要', '會',
+  '会', '能', '可以', '可能', '應', '应', '應該', '应该', '必須', '必须', '得', '地', '麼', '么', '呢', '吧',
+  '啊', '嗎', '吗', '呀', '啦', '哇', '罷了', '罢了', '而已', '雖然', '虽然', '但是', '但', '然而', '可是', '不過',
+  '不过', '如果', '要是', '假如', '只要', '只有', '除非', '因為', '因为', '所以', '因此', '因而', '既然', '那麼', '那么'
 ]);
 
 function extractCandidateWords(text, maxCandidates = 35) {
@@ -640,6 +691,18 @@ function removeKeywordCardAndHighlights() {
 // Clean up floating keyword card and highlights if page is unloaded or hidden
 window.addEventListener('beforeunload', removeKeywordCardAndHighlights);
 window.addEventListener('pagehide', removeKeywordCardAndHighlights);
+// When any link on the page is clicked, close the keywords card and highlights
+document.addEventListener('click', (e) => {
+  if (!activeKeywordCard) return;
+  // If the click is inside the keyword card itself, don't close it here
+  if (activeKeywordCard.contains(e.target)) return;
+
+  const anchor = e.target.closest('a[href]');
+  if (anchor) {
+    removeKeywordCardAndHighlights();
+  }
+}, true);
+
 
 let activeKeywordHighlights = [];
 

@@ -147,6 +147,13 @@
   font-size: 12px !important;
   font-weight: 500 !important;
   cursor: pointer !important;
+  padding: 2px 4px !important;
+  border-radius: 4px !important;
+}
+
+.jev-btn-link:hover {
+  background: rgba(0, 122, 255, 0.1) !important;
+}
 
 /* Highlighted keywords in document */
 mark.jev-keyword-highlight {
@@ -154,7 +161,12 @@ mark.jev-keyword-highlight {
   color: inherit !important;
   border-radius: 3px !important;
   padding: 1px 3px !important;
+  cursor: text !important;
   transition: background-color 0.3s ease, box-shadow 0.3s ease !important;
+}
+
+mark.jev-keyword-highlight:hover {
+  background-color: rgba(255, 193, 7, 0.75) !important;
 }
 
 mark.jev-keyword-highlight.jev-keyword-focused {
@@ -166,6 +178,9 @@ mark.jev-keyword-highlight.jev-keyword-focused {
   mark.jev-keyword-highlight {
     background-color: rgba(255, 204, 0, 0.25) !important;
   }
+  mark.jev-keyword-highlight:hover {
+    background-color: rgba(255, 204, 0, 0.55) !important;
+  }
   mark.jev-keyword-highlight.jev-keyword-focused {
     background-color: rgba(255, 204, 0, 0.7) !important;
     box-shadow: 0 0 0 3px rgba(255, 204, 0, 0.4) !important;
@@ -173,6 +188,16 @@ mark.jev-keyword-highlight.jev-keyword-focused {
 }
 
 .jev-keyword-chip {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  background: #f1f3f7 !important;
+  color: #222 !important;
+  padding: 4px 8px !important;
+  border-radius: 6px !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  border: 1px solid #e5e7eb !important;
   cursor: pointer !important;
   user-select: none !important;
   transition: transform 0.15s ease, background-color 0.15s ease !important;
@@ -184,17 +209,14 @@ mark.jev-keyword-highlight.jev-keyword-focused {
 }
 
 @media (prefers-color-scheme: dark) {
+  .jev-keyword-chip {
+    background: #2b2b36 !important;
+    color: #e4e4ec !important;
+    border-color: #3d3d4b !important;
+  }
   .jev-keyword-chip:hover {
     background: #383847 !important;
   }
-}
-
-  padding: 2px 4px !important;
-  border-radius: 4px !important;
-}
-
-.jev-btn-link:hover {
-  background: rgba(0, 122, 255, 0.1) !important;
 }
 
 .jev-btn-close {

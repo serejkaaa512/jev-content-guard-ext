@@ -5,19 +5,19 @@ const EXTRACT_KEYWORDS_PAGE_MENU_ID = 'jev-extract-keywords-page';
 chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.create({
     id: SELECTION_MENU_ID,
-    title: 'Jev Content Guard: check selection',
+    title: 'Jev: check selection',
     contexts: ['selection']
   });
 
   chrome.contextMenus.create({
     id: EXTRACT_KEYWORDS_MENU_ID,
-    title: 'Jev: extract main words from selection',
+    title: 'Jev: keywords in selection',
     contexts: ['selection']
   });
 
   chrome.contextMenus.create({
     id: EXTRACT_KEYWORDS_PAGE_MENU_ID,
-    title: 'Jev: extract main words from page',
+    title: 'Jev: keywords on page',
     contexts: ['page']
   });
 });
