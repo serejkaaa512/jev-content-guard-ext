@@ -3,63 +3,105 @@
 <head>
   <meta charset="utf-8">
   <style>
-    body { width: 280px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 12px; margin: 0; background: #fafafa; }
-    h3 { margin-top: 0; color: #111; font-size: 16px; border-bottom: 1px solid #eee; padding-bottom: 8px; }
-    label { font-size: 12px; color: #555; font-weight: 500; }
-    input { width: 100%; padding: 8px; margin: 8px 0; box-sizing: border-box; border: 1px solid #ccc; border-radius: 6px; font-size: 13px; }
-    .scope { display: flex; gap: 14px; margin: 6px 0; }
-    .scope label { display: flex; align-items: center; gap: 5px; font-size: 12px; color: #555; cursor: pointer; }
-    .scope input { width: auto; margin: 0; padding: 0; accent-color: #007aff; }
-    .scope-hint { font-size: 11px; color: #888; margin: 0 0 10px; line-height: 1.4; }
-    button { width: 100%; padding: 10px; background: #007aff; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13px; transition: background 0.2s; }
-    button:hover { background: #0056b3; }
-    .status { font-size: 12px; margin-top: 8px; color: #28a745; display: none; text-align: center; font-weight: 500; }
-    .thresholds { display: grid; grid-template-columns: 1fr auto auto; gap: 4px 8px; align-items: center; margin: 8px 0; }
-    .thresholds label { margin: 0; }
-    .thresholds input { width: 56px; margin: 0; text-align: center; }
-    .thresholds .upper { background: #f0f4ff; border-color: #9db4e8; }
+    :root { --brand1: #4f7cff; --brand2: #8b5cf6; --ink: #1f2937; --muted: #6b7280; --line: #e5e7eb; }
+    * { box-sizing: border-box; }
+    body { width: 340px; margin: 0; color: var(--ink); background: linear-gradient(180deg, #eef2fb 0%, #f7f9fd 100%); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    header { padding: 8px 14px 9px; color: #fff; background: linear-gradient(135deg, var(--brand1) 0%, var(--brand2) 100%); }
+    header h3 { display: flex; align-items: center; gap: 6px; margin: 0; font-size: 14.5px; font-weight: 700; }
+    header .logo { font-size: 15px; line-height: 1; }
+    header p { margin: 1px 0 0 21px; font-size: 10.5px; font-weight: 500; opacity: .82; }
+    main { display: flex; flex-direction: column; gap: 7px; padding: 9px 11px 11px; }
+    .card { padding: 8px 10px 9px; background: #fff; border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 2px 8px rgba(31, 41, 55, .06); animation: rise .18s ease-out; }
+    .card > :last-child { margin-bottom: 0; }
+    @keyframes rise { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+    label { display: block; margin: 0 0 2px; font-size: 10px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
+    input[type="password"] { width: 100%; padding: 6px 9px; margin: 0 0 7px; font-family: inherit; font-size: 12px; color: var(--ink); background: #fbfcfe; border: 1px solid #dfe3ec; border-radius: 8px; transition: border-color .15s, box-shadow .15s, background .15s; }
+    input[type="password"]:focus { outline: none; background: #fff; border-color: #9db8f8; box-shadow: 0 0 0 3px rgba(79, 124, 255, .14); }
+    .segmented { display: flex; gap: 4px; padding: 3px; margin: 0 0 6px; background: #eef1f7; border-radius: 9px; }
+    .segmented .seg { flex: 1; margin: 0; }
+    .segmented .seg input { position: absolute; width: 0; height: 0; opacity: 0; pointer-events: none; }
+    .segmented .seg span { display: block; padding: 4px 0; font-size: 11px; font-weight: 600; color: #5b6474; text-align: center; border-radius: 7px; cursor: pointer; transition: background .15s, color .15s, box-shadow .15s; }
+    .segmented .seg input:checked + span { background: #fff; color: var(--brand1); box-shadow: 0 1px 3px rgba(31, 41, 55, .14); }
+    .segmented .seg input:focus-visible + span { box-shadow: 0 0 0 3px rgba(79, 124, 255, .25); }
+    .has-tip { cursor: help; }
+    .has-tip::after { content: "i"; display: inline-block; width: 11px; height: 11px; margin-left: 4px; font-size: 8px; font-style: italic; line-height: 11px; text-align: center; color: #8b93a3; background: #eef1f7; border-radius: 50%; }
+    [hidden] { display: none !important; }
+    textarea { width: 100%; height: 52px; padding: 5px 9px; margin: 0 0 7px; font-family: monospace; font-size: 11px; color: var(--ink); background: #fbfcfe; border: 1px solid #dfe3ec; border-radius: 8px; resize: vertical; transition: border-color .15s, box-shadow .15s, background .15s; }
+    textarea:focus { outline: none; background: #fff; border-color: #9db8f8; box-shadow: 0 0 0 3px rgba(79, 124, 255, .14); }
+    .thresholds { display: grid; grid-template-columns: 1fr auto auto; gap: 2px 6px; align-items: center; margin: 0 0 9px; }
+    .thresholds label { margin: 0; font-size: 11px; font-weight: 500; letter-spacing: 0; text-transform: none; color: #4b5563; }
+    .thresholds input { width: 48px; padding: 2px 3px; margin: 0; font-family: inherit; font-size: 11.5px; text-align: center; color: var(--ink); background: #fbfcfe; border: 1px solid #dfe3ec; border-radius: 6px; }
+    .thresholds input:focus { outline: none; border-color: #9db8f8; box-shadow: 0 0 0 2px rgba(79, 124, 255, .14); }
+    .thresholds .upper { background: #f2f6ff; border-color: #c7d6fb; }
+    button { position: relative; width: 100%; padding: 8px 10px; margin-top: 2px; font-family: inherit; font-size: 12.5px; font-weight: 700; color: #fff; cursor: pointer; background: linear-gradient(135deg, var(--brand1) 0%, var(--brand2) 100%); border: none; border-radius: 9px; box-shadow: 0 2px 6px rgba(79, 124, 255, .28); transition: filter .15s, box-shadow .15s, transform .1s; }
+    button:hover { filter: brightness(1.07); box-shadow: 0 4px 12px rgba(79, 124, 255, .34); }
+    button:active { transform: translateY(1px); }
+    button .btn-label { transition: opacity .18s ease; }
+    .btn-check { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 15px; opacity: 0; transform: scale(.65); transition: opacity .18s ease, transform .18s ease; }
+    button.saved { background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); box-shadow: 0 2px 8px rgba(22, 163, 74, .35); }
+    button.saved .btn-label { opacity: 0; }
+    button.saved .btn-check { opacity: 1; transform: scale(1); }
+    .footnote { min-height: 41px; margin: 0; padding: 6px 9px; font-size: 10px; line-height: 1.35; color: #6b7280; background: #f1f4fb; border: 1px solid #e3e9f7; border-radius: 10px; transition: background .18s ease, border-color .18s ease, color .18s ease; }
+    .footnote b { color: #4b5563; }
+    .footnote.error { color: #b91c1c; background: #fef2f2; border-color: #fecaca; }
   </style>
 </head>
 <body>
-  <h3>Jev Guard Settings</h3>
-  <label for="apiKey">TypeSafe Jev API Token:</label>
-  <input type="password" id="apiKey" placeholder="jev_live_...">
-  <label>Scan scope:</label>
-  <div class="scope">
-    <label><input type="radio" name="scanScope" value="page" checked> Entire page</label>
-    <label><input type="radio" name="scanScope" value="selection"> Selected text only</label>
-  </div>
-  <div class="scope-hint">“Selected text only” skips automatic scanning — analyze a fragment via right-click → “Jev Content Guard: check selection”.</div>
-  <label>Trigger thresholds (%) · lower / upper:</label>
-  <div class="thresholds">
-    <label for="th_is_fraud">⚠️ Fraud</label>
-    <input type="number" id="th_is_fraud" min="1" max="100" value="50">
-    <input type="number" id="thu_is_fraud" class="upper" min="1" max="100" value="80">
-    <label for="th_is_advertising">📢 Advertising</label>
-    <input type="number" id="th_is_advertising" min="1" max="100" value="20">
-    <input type="number" id="thu_is_advertising" class="upper" min="1" max="100" value="80">
-    <label for="th_is_ai_generated">🤖 AI generation</label>
-    <input type="number" id="th_is_ai_generated" min="1" max="100" value="25">
-    <input type="number" id="thu_is_ai_generated" class="upper" min="1" max="100" value="80">
-    <label for="th_is_spam">🚫 Spam</label>
-    <input type="number" id="th_is_spam" min="1" max="100" value="25">
-    <input type="number" id="thu_is_spam" class="upper" min="1" max="100" value="80">
-    <label for="th_is_clickbait">🪤 Clickbait</label>
-    <input type="number" id="th_is_clickbait" min="1" max="100" value="20">
-    <input type="number" id="thu_is_clickbait" class="upper" min="1" max="100" value="80">
-    <label for="th_is_infobusiness">💎 Infobusiness</label>
-    <input type="number" id="th_is_infobusiness" min="1" max="100" value="25">
-    <input type="number" id="thu_is_infobusiness" class="upper" min="1" max="100" value="80">
-    <label for="th_is_toxic">🤬 Toxicity</label>
-    <input type="number" id="th_is_toxic" min="1" max="100" value="25">
-    <input type="number" id="thu_is_toxic" class="upper" min="1" max="100" value="80">
-    <label for="th_is_plagiat">📕 Plagiat</label>
-    <input type="number" id="th_is_plagiat" min="1" max="100" value="25">
-    <input type="number" id="thu_is_plagiat" class="upper" min="1" max="100" value="80">
-  </div>
-  <button id="saveBtn">Save settings</button>
-  <div id="status" class="status">Settings saved successfully!</div>
-
+  <header>
+    <h3><span class="logo">🛡️</span>Jev Content Guard</h3>
+    <p>fraud · ads · AI slop · spam · clickbait · toxicity</p>
+  </header>
+  <main>
+    <section class="card">
+      <label for="apiKey">TypeSafe Jev API token</label>
+      <input type="password" id="apiKey" placeholder="jev_live_...">
+    </section>
+    <section class="card">
+      <label>Trigger thresholds (%) · lower / upper</label>
+      <div class="thresholds">
+        <label for="th_is_fraud">⚠️ Fraud</label>
+        <input type="number" id="th_is_fraud" min="1" max="100" value="50">
+        <input type="number" id="thu_is_fraud" class="upper" min="1" max="100" value="80">
+        <label for="th_is_advertising">📢 Advertising</label>
+        <input type="number" id="th_is_advertising" min="1" max="100" value="20">
+        <input type="number" id="thu_is_advertising" class="upper" min="1" max="100" value="80">
+        <label for="th_is_ai_generated">🤖 AI generation</label>
+        <input type="number" id="th_is_ai_generated" min="1" max="100" value="25">
+        <input type="number" id="thu_is_ai_generated" class="upper" min="1" max="100" value="80">
+        <label for="th_is_spam">🚫 Spam</label>
+        <input type="number" id="th_is_spam" min="1" max="100" value="25">
+        <input type="number" id="thu_is_spam" class="upper" min="1" max="100" value="80">
+        <label for="th_is_clickbait">🪤 Clickbait</label>
+        <input type="number" id="th_is_clickbait" min="1" max="100" value="20">
+        <input type="number" id="thu_is_clickbait" class="upper" min="1" max="100" value="80">
+        <label for="th_is_infobusiness">💎 Infobusiness</label>
+        <input type="number" id="th_is_infobusiness" min="1" max="100" value="25">
+        <input type="number" id="thu_is_infobusiness" class="upper" min="1" max="100" value="80">
+        <label for="th_is_toxic">🤬 Toxicity</label>
+        <input type="number" id="th_is_toxic" min="1" max="100" value="25">
+        <input type="number" id="thu_is_toxic" class="upper" min="1" max="100" value="80">
+        <label for="th_is_plagiat">📕 Plagiat</label>
+        <input type="number" id="th_is_plagiat" min="1" max="100" value="25">
+        <input type="number" id="thu_is_plagiat" class="upper" min="1" max="100" value="80">
+      </div>
+    </section>
+    <section class="card">
+      <label class="has-tip" title="“Selection only” disables automatic scanning — check a fragment from the right-click menu.">Scan scope</label>
+      <div class="segmented">
+        <label class="seg"><input type="radio" name="scanScope" value="page" checked><span>Entire page</span></label>
+        <label class="seg"><input type="radio" name="scanScope" value="selection"><span>Selection only</span></label>
+      </div>
+    </section>
+    <section class="card" id="excludedBlock">
+      <label for="excludedUrls" class="has-tip" title="Skipped by automatic scanning. Domains, paths and * wildcards supported.">Excluded pages / domains (one per line)</label>
+      <textarea id="excludedUrls" spellcheck="false" placeholder="example.com&#10;github.com/my-repo&#10;https://internal.site/*"></textarea>
+    </section>
+      <button id="saveBtn" aria-label="Save settings">
+        <span class="btn-label">Save settings</span>
+        <span class="btn-check" aria-hidden="true">✓</span>
+      </button>
+      <p class="footnote" id="footnote"><b>Tip:</b> right-click a selection → “Jev: keywords in selection”, or anywhere → “Jev: keywords on page”.</p>
+  </main>
   <script src="popup.js"></script>
 </body>
 </html>

@@ -1,7 +1,51 @@
 document.addEventListener('DOMContentLoaded', () => {
   const apiKeyInput = document.getElementById('apiKey');
   const saveBtn = document.getElementById('saveBtn');
-  const status = document.getElementById('status');
+  const footnote = document.getElementById('footnote');
+  const footnoteTip = footnote ? footnote.innerHTML : '';
+
+  let footnoteTimer = null;
+  let savedTimer = null;
+
+  // Success feedback lives on the button itself: a green flash plus a check mark.
+  function flashSaved() {
+    saveBtn.classList.add('saved');
+    saveBtn.setAttribute('aria-label', 'Settings saved');
+    clearTimeout(savedTimer);
+    savedTimer = setTimeout(() => {
+      saveBtn.classList.remove('saved');
+      saveBtn.setAttribute('aria-label', 'Save settings');
+    }, 1600);
+  }
+
+  // The bottom strip shows a keyword tip; it doubles as the validation error line.
+  function showFootnoteError(message) {
+    if (!footnote) return;
+    footnote.textContent = message;
+    footnote.classList.add('error');
+    clearTimeout(footnoteTimer);
+    footnoteTimer = setTimeout(() => {
+      footnote.innerHTML = footnoteTip;
+      footnote.classList.remove('error');
+    }, 2600);
+  }
+  const excludedUrlsInput = document.getElementById('excludedUrls');
+  const excludedBlock = document.getElementById('excludedBlock');
+
+  function getSelectedScope() {
+    return document.querySelector('input[name="scanScope"]:checked')?.value === 'selection'
+      ? 'selection'
+      : 'page';
+  }
+
+  // The exclusion list only matters for automatic whole-page scanning.
+  function applyExcludedVisibility(scope) {
+    if (excludedBlock) excludedBlock.hidden = scope !== 'page';
+  }
+
+  document.querySelectorAll('input[name="scanScope"]').forEach((input) => {
+    input.addEventListener('change', () => applyExcludedVisibility(getSelectedScope()));
+  });
 
   const DEFAULT_THRESHOLDS = {
     is_fraud: 50,
@@ -14,13 +58,19 @@ document.addEventListener('DOMContentLoaded', () => {
     is_plagiat: 25
   };
 
-  chrome.storage.local.get(['jevApiKey', 'jevThresholds', 'jevScanScope'], (result) => {
+  chrome.storage.local.get(['jevApiKey', 'jevThresholds', 'jevScanScope', 'jevExcludedUrls'], (result) => {
     if (result.jevApiKey) {
       apiKeyInput.value = result.jevApiKey;
+    }
+    if (Array.isArray(result.jevExcludedUrls)) {
+      excludedUrlsInput.value = result.jevExcludedUrls.join('\n');
+    } else if (typeof result.jevExcludedUrls === 'string') {
+      excludedUrlsInput.value = result.jevExcludedUrls;
     }
     const scope = result.jevScanScope === 'selection' ? 'selection' : 'page';
     const scopeInput = document.querySelector(`input[name="scanScope"][value="${scope}"]`);
     if (scopeInput) scopeInput.checked = true;
+    applyExcludedVisibility(scope);
     const saved = result.jevThresholds || {};
     // Storage holds fractions (0.25); popup shows percents (25).
     const thresholds = { ...DEFAULT_THRESHOLDS };
@@ -67,26 +117,26 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (!valid) {
-      status.textContent = 'Thresholds: 1–100, upper must be above lower!';
-      status.style.color = '#dc3545';
-      status.style.display = 'block';
-      setTimeout(() => {
-        status.style.display = 'none';
-        status.textContent = 'Settings saved successfully!';
-        status.style.color = '#28a745';
-      }, 2000);
+      showFootnoteError('Thresholds: 1–100, upper must be above lower!');
       return;
     }
 
-    const scanScope = document.querySelector('input[name="scanScope"]:checked')?.value === 'selection'
-      ? 'selection'
-      : 'page';
+    const scanScope = getSelectedScope();
+
+    const excludedUrls = excludedUrlsInput.value
+      .split('\n')
+      .map(line => line.trim())
+      .filter(line => line.length > 0);
 
     chrome.storage.local.set(
-      { jevApiKey: key, jevThresholds: { ...thresholds, upper_limits: upperLimits }, jevScanScope: scanScope },
+      {
+        jevApiKey: key,
+        jevThresholds: { ...thresholds, upper_limits: upperLimits },
+        jevScanScope: scanScope,
+        jevExcludedUrls: excludedUrls
+      },
       () => {
-        status.style.display = 'block';
-        setTimeout(() => { status.style.display = 'none'; }, 2000);
+        flashSaved();
       }
     );
   });

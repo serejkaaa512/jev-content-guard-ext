@@ -5,7 +5,9 @@ A **Manifest V3** browser extension that filters out fraud, advertising, AI slop
 ## ✨ Features
 
 - **Automatic content scanning** — the extension analyzes page text in the background as you browse (including dynamically added content via `MutationObserver`).
-- **Selectable scan scope** — choose in the popup between *Entire page* (automatic scanning) and *Selected text only* (nothing is scanned until you ask for it).
+- **Selectable scan scope** — choose in the popup between *Entire page* (automatic scanning) and *Selection only* (nothing is scanned until you ask for it).
+- **Excluded pages / domains** — configure a list of pages, domains, or wildcard patterns (e.g. `example.com`, `github.com/my-repo/*`) that will be excluded from automatic detection and scanning. The list is shown only for the *Entire page* scope (it applies to automatic scanning) and is preserved when switching to *Selection only*.
+- **Compact card popup** — every block sits in its own rounded card (API token · thresholds · scan scope · exclusions). The scope and exclusion labels carry hover tooltips, a successful save flashes a green ✓ on the **Save settings** button, and the footer strip reminds you how to extract key words (validation errors appear there in red).
 - **Context menu actions**:
   - **Check selection**: Select any fragment of a page, right-click and choose **“Jev: check selection”** to analyze content categories and pin matching badges next to it.
   - **Extract main words from selection**: Select any fragment, right-click and choose **“Jev: keywords in selection”** to ask Jev which words have the most meaning and core significance.
@@ -41,8 +43,8 @@ jev-content-guard-ext/
 ├── manifest.json    # MV3 extension manifest (permissions, scripts, popup, description)
 ├── background.js    # Service worker: context menu entries + proxies category & keyword requests to Jev API
 ├── content.js       # Content script: DOM scanning, keyword extraction & highlighting, badges/overlays
-├── popup.html       # Settings popup UI (API key + thresholds + scan scope)
-├── popup.js         # Popup logic: load/save API key and thresholds
+├── popup.html       # Settings popup UI: one card per block (API key · thresholds · scan scope · exclusions)
+├── popup.js         # Popup logic: load/save settings, scope-dependent exclusion card, save feedback
 └── styles.css       # Badge, blur overlay, floating keyword card & text highlight styling
 ```
 
@@ -61,7 +63,9 @@ Both `{ probability: N }` and the native Jev format `{ type: "noul", noul: N }` 
 
 6. **Scan scope** (`jevScanScope` setting in the popup):
    - *Entire page* — the automatic pipeline above runs as you browse.
-   - *Selected text only* — automatic scanning is disabled; analysis runs only through the context-menu item. The selected fragment (no minimum length, capped at 4000 characters) goes through the same API, and **all** flags above their thresholds are rendered as dismissible badges pinned next to the selection (short selections included — the automatic top-match-only rule does not apply here).
+   - *Selection only* — automatic scanning is disabled; analysis runs only through the context-menu item. The selected fragment (no minimum length, capped at 4000 characters) goes through the same API, and **all** flags above their thresholds are rendered as dismissible badges pinned next to the selection (short selections included — the automatic top-match-only rule does not apply here).
+
+7. **Excluded pages** (`jevExcludedUrls`, shown for *Entire page* only): each line is a domain (`example.com` — also matches its subdomains), a path or full-URL pattern, and `*` wildcards are supported (`github.com/my-repo/*`). Matching pages are skipped completely — nothing is queued and any pending items are dropped.
 
 ### 2. Main Words (Keyword) Extraction Pipeline
 1. **Candidate Extraction**: Selected text or page content is tokenized into word candidates using Unicode letter segmentation (`\p{L}+`). Stop words across 6 languages (English, Russian, Spanish, French, German, Chinese) and words shorter than 3 characters are removed. Original order of appearance and casing are preserved.
@@ -89,8 +93,9 @@ Both `{ probability: N }` and the native Jev format `{ type: "noul", noul: N }` 
 3. Optionally tune per-category **lower / upper thresholds** (percent, 1–100). Defaults:
    - Fraud: 50% · Advertising: 20% · AI: 25% · Spam: 25% · Clickbait: 20% · Infobusiness: 25% · Toxicity: 25%
    - Upper limits default to 80% for all categories and must be strictly above the lower threshold.
-4. Click **Save settings** — thresholds and the scan scope are applied to open tabs instantly via the `chrome.storage.onChanged` listener.
-5. Highlight any fragment or right-click anywhere to use the context menu actions:
+4. With *Entire page* scope, optionally list **excluded pages / domains** (one per line: `example.com`, `github.com/my-repo/*`). The card is hidden in *Selection only* mode, but the saved list is kept.
+5. Click **Save settings** — settings are applied to open tabs instantly via the `chrome.storage.onChanged` listener, and a green ✓ flashes on the button to confirm the save.
+6. Highlight any fragment or right-click anywhere to use the context menu actions:
    - **Jev: check selection** — check safety & category flags for selected text.
    - **Jev: keywords in selection** — extract and highlight key conceptual words in the selected text.
    - **Jev: keywords on page** — extract and highlight key conceptual words across the entire page.
@@ -99,7 +104,7 @@ Both `{ probability: N }` and the native Jev format `{ type: "noul", noul: N }` 
 
 | Permission | Why it's needed |
 |---|---|
-| `storage` | Store API key, thresholds, and scan scope locally |
+| `storage` | Store the API key, thresholds, scan scope and exclusion list locally |
 | `activeTab` / `scripting` | Interact with the current page |
 | `contextMenus` | Offer selection check and keyword extraction in the right-click menu |
 | `host_permissions: https://api.typesafe.ai/*` | Call the Jev analysis API |

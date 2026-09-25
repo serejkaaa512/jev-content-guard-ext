@@ -39,6 +39,55 @@ function loadThresholds() {
   });
 }
 
+let isPageExcluded = false;
+let excludedUrls = [];
+
+function isUrlExcluded(currentUrl, patterns) {
+  if (!patterns || !patterns.length) return false;
+  const url = currentUrl.trim();
+  let urlObj;
+  try {
+    urlObj = new URL(url);
+  } catch (_) {
+    // If invalid URL, fallback to string checks
+  }
+
+  const hostname = urlObj ? urlObj.hostname.toLowerCase() : '';
+  const hostAndPath = urlObj ? (urlObj.host + urlObj.pathname) : '';
+  const fullWithoutProtocol = url.replace(/^[a-zA-Z]+:\/\//, '');
+
+  for (const rawPattern of patterns) {
+    const pattern = rawPattern.trim();
+    if (!pattern) continue;
+
+    // Direct match against URL or URL without protocol
+    if (url === pattern || fullWithoutProtocol === pattern) return true;
+
+    // If pattern doesn't specify a path (e.g. "example.com" or "sub.example.com"),
+    // match hostname directly or as domain suffix (e.g. *.example.com or subdomains)
+    if (!pattern.includes('/') && !pattern.includes('*') && hostname) {
+      const lowerPat = pattern.toLowerCase();
+      if (hostname === lowerPat || hostname.endsWith('.' + lowerPat)) {
+        return true;
+      }
+    }
+
+    // Wildcard pattern matching
+    try {
+      const escapeRegex = (s) => s.replace(/[-[\]/{}()+?.\\^$|]/g, '\\$&');
+      const parts = pattern.split('*');
+      const regexPattern = '^' + parts.map(escapeRegex).join('.*') + '$';
+      const regex = new RegExp(regexPattern, 'i');
+
+      if (regex.test(url)) return true;
+      if (regex.test(fullWithoutProtocol)) return true;
+      if (hostname && (regex.test(hostname) || regex.test(urlObj.host))) return true;
+      if (hostAndPath && regex.test(hostAndPath)) return true;
+    } catch (_) {}
+  }
+  return false;
+}
+
 chrome.storage.onChanged.addListener((changes, areaName) => {
   if (areaName !== "local") return;
   if (changes.jevThresholds) {
@@ -46,6 +95,19 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
   }
   if (changes.jevScanScope) {
     applyScanScope(changes.jevScanScope.newValue === 'selection' ? 'selection' : 'page');
+  }
+  if (changes.jevExcludedUrls) {
+    excludedUrls = Array.isArray(changes.jevExcludedUrls.newValue) ? changes.jevExcludedUrls.newValue : [];
+    const wasExcluded = isPageExcluded;
+    isPageExcluded = isUrlExcluded(window.location.href, excludedUrls);
+    if (!wasExcluded && isPageExcluded) {
+      // Clear analysis queue if page became excluded
+      analysisQueue.length = 0;
+      clearTimeout(debounceTimer);
+    } else if (wasExcluded && !isPageExcluded && scanScope === 'page' && observersStarted) {
+      // Page un-excluded: trigger scan
+      queueElementForAnalysis(document.body);
+    }
   }
 });
 
@@ -68,6 +130,8 @@ let scanScope = null;
 let domReady = false;
 let observersStarted = false;
 
+let excludedLoaded = false;
+
 initContentScanner();
 
 function initContentScanner() {
@@ -80,7 +144,10 @@ function initContentScanner() {
     domReady = true;
   }
 
-  chrome.storage.local.get(['jevScanScope'], (result) => {
+  chrome.storage.local.get(['jevScanScope', 'jevExcludedUrls'], (result) => {
+    excludedUrls = Array.isArray(result.jevExcludedUrls) ? result.jevExcludedUrls : [];
+    isPageExcluded = isUrlExcluded(window.location.href, excludedUrls);
+    excludedLoaded = true;
     applyScanScope(result.jevScanScope === 'selection' ? 'selection' : 'page');
   });
 }
@@ -90,16 +157,16 @@ function applyScanScope(scope) {
   scanScope = scope;
   startScanningIfReady();
   // Resuming whole-page mode walks the DOM again for never-analyzed elements.
-  if (previous === 'selection' && scope === 'page' && observersStarted) {
+  if (previous === 'selection' && scope === 'page' && observersStarted && !isPageExcluded) {
     queueElementForAnalysis(document.body);
   }
 }
 
 function startScanningIfReady() {
-  if (!domReady || scanScope === null || observersStarted) return;
+  if (!domReady || scanScope === null || !excludedLoaded || observersStarted) return;
   observersStarted = true;
   setupObservers();
-  if (scanScope === 'page') {
+  if (scanScope === 'page' && !isPageExcluded) {
     queueElementForAnalysis(document.body);
   }
 }
@@ -123,8 +190,8 @@ function setupObservers() {
 
 function queueElementForAnalysis(rootElement) {
   // Automatic scanning is limited to whole-page scope; selections are analyzed
-  // on demand through the context menu.
-  if (scanScope !== 'page') return;
+  // on demand through the context menu. Also skip if the current page is excluded.
+  if (scanScope !== 'page' || isPageExcluded) return;
 
   // Only the innermost matching elements are analyzed. If an element contains
   // another matching target (e.g. an <article> wrapping <p> tags), it is skipped
@@ -154,8 +221,8 @@ function queueElementForAnalysis(rootElement) {
 }
 
 async function processQueue() {
-  // The scope switched to "selection" while items were pending: drop them.
-  if (scanScope !== 'page') {
+  // The scope switched to "selection" or page was excluded while items were pending: drop them.
+  if (scanScope !== 'page' || isPageExcluded) {
     analysisQueue.length = 0;
     return;
   }

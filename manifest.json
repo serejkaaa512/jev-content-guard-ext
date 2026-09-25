@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Jev Content Guard",
-  "version": "1.6",
+  "version": "1.7",
   "description": "Filters fraud, ads, AI slop, spam, clickbait, plagiarism & toxicity, and highlights keywords on page using TypeSafe Jev AI.",
   "permissions": [
     "storage",
